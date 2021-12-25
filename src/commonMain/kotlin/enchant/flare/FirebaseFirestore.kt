@@ -135,3 +135,24 @@ data class FirebaseFirestoreSettings(
     val sslEnabled: Boolean = true,
     var loggingEnabled: Boolean
 )
+
+class FirestoreException(val code: Code): Exception("Operation failed with code: $code") {
+
+    enum class Code {
+        Aborted,
+        AlreadyExists,
+        DataLoss,
+        DeadlineExceeded,
+        FailedPrecondition,
+        Internal,
+        InvalidArgument,
+        NotFound,
+        OutOfRange,
+        PermissionDenied,
+        ResourceExhausted,
+        Unauthenticated,
+        Unavailable,
+        Unimplemented,
+        Unknown
+    }
+}
