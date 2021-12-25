@@ -2,32 +2,20 @@ package enchant.flare
 
 import kotlinx.coroutines.flow.Flow
 
-abstract class Document : Map<String, Any> {
+interface Document : Map<String, Any> {
 
     //TODO: Ensure data types are converted to the same Kotlin type (blob, boolean, date, double, geopoint, string, timestamp)
-    abstract val id: String
-
-    abstract val hasPendingWrites: Boolean
-    abstract val isFromCache: Boolean
-
-    override fun toString(): String {
-        return super.toString() //TODO: Include nice toString output
-    }
+    val id: String
+    val hasPendingWrites: Boolean
+    val isFromCache: Boolean
 }
 
-abstract class Collection : Iterable<Document> {
+interface Collection : Iterable<Document> {
 
-    abstract val id: String
-    abstract val documents: List<Document>
-
-    abstract val hasPendingWrites: Boolean
-    abstract val isFromCache: Boolean
-
-    override fun iterator(): Iterator<Document> = documents.iterator()
-
-    override fun toString(): String {
-        return super.toString() //TODO: Include nice toString output
-    }
+    val id: String
+    val documents: List<Document>
+    val hasPendingWrites: Boolean
+    val isFromCache: Boolean
 }
 
 interface FirebaseFirestore {
