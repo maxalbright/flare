@@ -8,3 +8,6 @@
 **/captures
 **/.externalNativeBuild
 .cxx
+
+flare.podspec
+kotlin-js-store
