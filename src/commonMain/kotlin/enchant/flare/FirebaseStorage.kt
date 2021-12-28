@@ -41,7 +41,7 @@ interface FirebaseStorage {
         var maxOperationRetryTime: Long
         var maxUploadRetryTime: Long
         val bucket: String
-        suspend fun useEmulator(host: String, port: Int)
+        fun useEmulator(host: String, port: Int)
     }
 }
 
@@ -69,7 +69,7 @@ interface ListResult {
     val pageToken: String
 }
 
-class StorageException(code: Code) : Exception("Cloud storage operation failed with code: $code") {
+class StorageException(val code: Code) : Exception("Cloud storage operation failed with code: $code") {
 
     enum class Code {
         BucketNotFound,
