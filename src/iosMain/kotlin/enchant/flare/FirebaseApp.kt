@@ -3,9 +3,27 @@ package enchant.flare
 import cocoapods.FirebaseCore.FIRApp
 import cocoapods.FirebaseCore.FIROptions
 
-internal actual class FirebaseAppImpl(app: FIRApp) : FirebaseApp {
-    override val name: String = app.name
-    override val options: FirebaseOptions = toFirebaseOptions(app.options)
+actual class FirebaseApp(val app: FIRApp) {
+    actual val name: String = app.name
+    actual val options: FirebaseOptions = toFirebaseOptions(app.options)
+
+    actual companion object {
+        private val instance: FirebaseApp by lazy { FirebaseApp(FIRApp.defaultApp()!!) }
+
+        actual fun getApps(context: Any?): List<FirebaseApp> =
+            FIRApp.allApps?.values?.map { FirebaseApp(it as FIRApp) } ?: emptyList()
+
+        actual fun getInstance(name: String?): FirebaseApp =
+            if (name == null) instance else FirebaseApp(FIRApp.appNamed(name)!!)
+
+        actual fun initialize(context: Any?, name: String?, options: FirebaseOptions?) {
+            when (true) {
+                name == null && options == null -> FIRApp.configure()
+                name == null -> FIRApp.configureWithOptions(toFIROptions(options!!))
+                else -> FIRApp.configureWithName(name, toFIROptions(options!!))
+            }
+        }
+    }
 }
 
 private fun toFirebaseOptions(options: FIROptions): FirebaseOptions =
@@ -33,22 +51,3 @@ private fun toFIROptions(options: FirebaseOptions): FIROptions =
         setBundleID(bundleID)
         setClientID(clientID)
     }
-
-internal actual fun initializeApp(
-    context: Any?,
-    name: String?,
-    options: FirebaseOptions?
-) {
-    when (true) {
-        name == null && options == null -> FIRApp.configure()
-        name == null -> FIRApp.configureWithOptions(toFIROptions(options!!))
-        else -> FIRApp.configureWithName(name, toFIROptions(options!!))
-    }
-}
-
-internal actual val appInstance: FirebaseApp by lazy { FirebaseAppImpl(FIRApp.defaultApp()!!) }
-internal actual fun getApps(context: Any?): List<FirebaseApp> =
-    FIRApp.allApps?.values?.map { FirebaseAppImpl(it as FIRApp) } ?: emptyList()
-
-internal actual fun getAppInstance(name: String): FirebaseApp =
-    FirebaseAppImpl(FIRApp.appNamed(name)!!)

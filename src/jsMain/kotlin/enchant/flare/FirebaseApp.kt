@@ -1,8 +1,21 @@
 package enchant.flare
 
-internal actual class FirebaseAppImpl(app: JsFirebaseApp) : FirebaseApp {
-    override val name: String = app.name
-    override val options: FirebaseOptions = toFirebaseOptions(app.options)
+actual class FirebaseApp(val app: JsFirebaseApp) {
+    actual val name: String = app.name
+    actual val options: FirebaseOptions = toFirebaseOptions(app.options)
+
+    actual companion object {
+        private val instance: FirebaseApp by lazy { FirebaseApp(getApp(null)) }
+
+        actual fun getApps(context: Any?): List<FirebaseApp> = getApps().map { FirebaseApp(it) }
+
+        actual fun getInstance(name: String?): FirebaseApp =
+            if (name == null) instance else FirebaseApp(getApp(name))
+
+        actual fun initialize(context: Any?, name: String?, options: FirebaseOptions?) {
+            initializeApp(toJsOptions(options!!), name)
+        }
+    }
 }
 
 private fun toFirebaseOptions(options: JsFirebaseOptions): FirebaseOptions =
@@ -30,16 +43,3 @@ private class JsFirebaseOptionsImpl(options: FirebaseOptions) : JsFirebaseOption
 
 private fun toJsOptions(options: FirebaseOptions): JsFirebaseOptions =
     JsFirebaseOptionsImpl(options)
-
-internal actual fun initializeApp(
-    context: Any?,
-    name: String?,
-    options: FirebaseOptions?
-) {
-    initializeApp(toJsOptions(options!!), name)
-}
-
-internal actual val appInstance: FirebaseApp by lazy { FirebaseAppImpl(getApp(null)) }
-internal actual fun getApps(context: Any?): List<FirebaseApp> = getApps().map { FirebaseAppImpl(it) }
-
-internal actual fun getAppInstance(name: String): FirebaseApp = FirebaseAppImpl(getApp(name))

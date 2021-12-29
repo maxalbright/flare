@@ -17,30 +17,17 @@ data class FirebaseOptions(
     val clientId: String? = null
 )
 
-interface FirebaseApp {
+expect class FirebaseApp {
     val name: String
     val options: FirebaseOptions
 
     companion object {
-        val apps: List<FirebaseApp> get () = getApps() as List<FirebaseApp>
-        fun getInstance(name: String? = null): FirebaseApp =
-            if(name == null) appInstance else getAppInstance(name)
+        fun getApps(context: Any?): List<FirebaseApp>
+        fun getInstance(name: String? = null): FirebaseApp
         fun initialize(
             context: Any? = null,
             name: String? = null,
             options: FirebaseOptions? = null
-        ): Unit = initializeApp(context, name, options)
+        )
     }
 }
-
-internal expect class FirebaseAppImpl : FirebaseApp
-
-internal expect fun initializeApp(
-    context: Any? = null,
-    name: String? = null,
-    options: FirebaseOptions? = null
-)
-
-internal expect val appInstance: FirebaseApp
-internal expect fun getApps(context: Any? = null): List<FirebaseApp>
-internal expect fun getAppInstance(name: String): FirebaseApp
