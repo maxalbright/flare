@@ -9,13 +9,13 @@ actual class FirebaseApp(val app: AndroidFirebaseApp) {
     actual val options: FirebaseOptions = toFirebaseOptions(app.options)
 
     actual companion object {
-        private val instance: FirebaseApp by lazy { FirebaseApp(AndroidFirebaseApp.getInstance()) }
+        actual val instance: FirebaseApp by lazy { FirebaseApp(AndroidFirebaseApp.getInstance()) }
 
         actual fun getApps(context: Any?): List<FirebaseApp> =
             AndroidFirebaseApp.getApps(context!! as Context).map { FirebaseApp(it) }
 
-        actual fun getInstance(name: String?): FirebaseApp =
-            if (name == null) instance else FirebaseApp(AndroidFirebaseApp.getInstance(name))
+        actual fun getInstance(name: String): FirebaseApp =
+            FirebaseApp(AndroidFirebaseApp.getInstance(name))
 
         actual fun initialize(context: Any?, name: String?, options: FirebaseOptions?) {
             when (true) {

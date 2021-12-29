@@ -394,6 +394,6 @@ internal actual val firestoreInstance: FirebaseFirestore by lazy {
     FirebaseFirestoreImpl(AndroidFirestore.getInstance())
 }
 
-actual fun getFirestoreInstance(app: FirebaseApp): FirebaseFirestore =
+internal actual fun getFirestoreInstance(app: FirebaseApp): FirebaseFirestore =
     FirebaseFirestoreImpl(AndroidFirestore.getInstance(app.app))
 

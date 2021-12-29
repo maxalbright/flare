@@ -8,13 +8,13 @@ actual class FirebaseApp(val app: FIRApp) {
     actual val options: FirebaseOptions = toFirebaseOptions(app.options)
 
     actual companion object {
-        private val instance: FirebaseApp by lazy { FirebaseApp(FIRApp.defaultApp()!!) }
+        actual val instance: FirebaseApp by lazy { FirebaseApp(FIRApp.defaultApp()!!) }
 
         actual fun getApps(context: Any?): List<FirebaseApp> =
             FIRApp.allApps?.values?.map { FirebaseApp(it as FIRApp) } ?: emptyList()
 
-        actual fun getInstance(name: String?): FirebaseApp =
-            if (name == null) instance else FirebaseApp(FIRApp.appNamed(name)!!)
+        actual fun getInstance(name: String): FirebaseApp =
+            FirebaseApp(FIRApp.appNamed(name)!!)
 
         actual fun initialize(context: Any?, name: String?, options: FirebaseOptions?) {
             when (true) {

@@ -23,7 +23,8 @@ expect class FirebaseApp {
 
     companion object {
         fun getApps(context: Any?): List<FirebaseApp>
-        fun getInstance(name: String? = null): FirebaseApp
+        val instance: FirebaseApp
+        fun getInstance(name: String): FirebaseApp
         fun initialize(
             context: Any? = null,
             name: String? = null,

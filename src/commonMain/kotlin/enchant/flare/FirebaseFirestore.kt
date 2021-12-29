@@ -57,8 +57,8 @@ interface FirebaseFirestore {
     }
 
     companion object {
-        fun getInstance(app: FirebaseApp? = null): FirebaseFirestore =
-            if (app == null) firestoreInstance else getFirestoreInstance(app)
+        val instance: FirebaseFirestore get() = firestoreInstance
+        fun getInstance(app: FirebaseApp) = getFirestoreInstance(app)
     }
 }
 
@@ -197,4 +197,4 @@ abstract class ListCollection(override val documents: List<Document>) : Collecti
 }
 
 internal expect val firestoreInstance: FirebaseFirestore
-expect fun getFirestoreInstance(app: FirebaseApp): FirebaseFirestore
+internal expect fun getFirestoreInstance(app: FirebaseApp): FirebaseFirestore
