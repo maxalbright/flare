@@ -34,7 +34,7 @@ private fun toFIROptions(options: FirebaseOptions): FIROptions =
         setClientID(clientID)
     }
 
-actual fun initializeApp(
+internal actual fun initializeApp(
     context: Any?,
     name: String?,
     options: FirebaseOptions?

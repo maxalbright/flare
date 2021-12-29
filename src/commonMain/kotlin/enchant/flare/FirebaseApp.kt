@@ -22,9 +22,9 @@ interface FirebaseApp {
     val options: FirebaseOptions
 
     companion object {
-        val instance: FirebaseApp = appInstance
         val apps: List<FirebaseApp> get () = getApps() as List<FirebaseApp>
-        fun getInstance(name: String): FirebaseApp = getAppInstance(name)
+        fun getInstance(name: String? = null): FirebaseApp =
+            if(name == null) appInstance else getAppInstance(name)
         fun initialize(
             context: Any? = null,
             name: String? = null,
@@ -35,7 +35,7 @@ interface FirebaseApp {
 
 internal expect class FirebaseAppImpl : FirebaseApp
 
-expect fun initializeApp(
+internal expect fun initializeApp(
     context: Any? = null,
     name: String? = null,
     options: FirebaseOptions? = null

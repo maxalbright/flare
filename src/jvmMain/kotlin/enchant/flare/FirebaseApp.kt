@@ -33,7 +33,7 @@ internal actual fun getApps(context: Any?): List<FirebaseApp> =
     JvmFirebaseApp.getApps().map { FirebaseAppImpl(it) }
 
 
-actual fun initializeApp(
+internal actual fun initializeApp(
     context: Any?,
     name: String?,
     options: FirebaseOptions?

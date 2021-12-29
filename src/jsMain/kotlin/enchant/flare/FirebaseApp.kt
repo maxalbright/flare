@@ -31,7 +31,7 @@ private class JsFirebaseOptionsImpl(options: FirebaseOptions) : JsFirebaseOption
 private fun toJsOptions(options: FirebaseOptions): JsFirebaseOptions =
     JsFirebaseOptionsImpl(options)
 
-actual fun initializeApp(
+internal actual fun initializeApp(
     context: Any?,
     name: String?,
     options: FirebaseOptions?

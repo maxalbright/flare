@@ -31,7 +31,7 @@ private fun toAndroidOptions(options: FirebaseOptions): AndroidFirebaseOptions =
         setStorageBucket(options.gcmSenderId)
     }.build()
 
-actual fun initializeApp(
+internal actual fun initializeApp(
     context: Any?,
     name: String?,
     options: FirebaseOptions?
