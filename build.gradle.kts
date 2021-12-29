@@ -13,20 +13,7 @@ repositories {
     mavenCentral()
 }
 
-rootProject.plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin> {
-    rootProject.the<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootExtension>().nodeVersion =
-        "16.0.0"
-}
-
 kotlin {
-    jvm()
-    js {
-        browser {
-            testTask {
-                useMocha()
-            }
-        }
-    }
     android()
     ios()
     iosSimulatorArm64()
@@ -59,20 +46,6 @@ kotlin {
 
             }
         }
-
-        val jvmMain by getting {
-            dependencies {
-                implementation("com.google.firebase:firebase-admin:8.1.0")
-            }
-        }
-        val jvmTest by getting
-
-        val jsMain by getting {
-            dependencies {
-                implementation(npm("firebase", "9.6.1"))
-            }
-        }
-        val jsTest by getting
 
         val androidMain by getting {
             dependencies {
