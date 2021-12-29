@@ -20,19 +20,19 @@ interface FirebaseStorage {
         path: String, onProgress: ((bytesDownloaded: Long, totalBytes: Long) -> Unit)? = null
     ): File
 
-    suspend fun getMetadata(path: String): Metadata
+    suspend fun getMetadata(path: String): StorageMetadata
     suspend fun list(path: String, maxResults: Int? = null, pageToken: String? = null): ListResult
     suspend fun putBytes(
-        path: String, bytes: Array<Byte>, metadata: Metadata? = null,
+        path: String, bytes: Array<Byte>, metadata: StorageMetadata? = null,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)? = null
-    ): Metadata
+    ): StorageMetadata
 
     suspend fun putFile(
-        path: String, filePath: String, metadata: Metadata? = null,
+        path: String, filePath: String, metadata: StorageMetadata? = null,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)? = null
-    ): Metadata
+    ): StorageMetadata
 
-    suspend fun updateMetadata(path: String, metadata: Metadata): Metadata
+    suspend fun updateMetadata(path: String, metadata: StorageMetadata): StorageMetadata
 
     val config: Config
 
@@ -45,7 +45,7 @@ interface FirebaseStorage {
     }
 }
 
-data class Metadata(
+data class StorageMetadata(
     val bucket: String,
     val cacheControl: String,
     val contentDisposition: String,
