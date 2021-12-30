@@ -64,10 +64,10 @@ data class StorageMetadata(
     val customMetadata: Map<String, String>
 )
 
-interface ListResult {
-    val items: List<String>
+data class ListResult (
+    val items: List<String>,
     val pageToken: String
-}
+)
 
 class StorageException(val code: Code) : Exception("Cloud storage operation failed with code: $code") {
 
