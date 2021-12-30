@@ -35,7 +35,7 @@ private class CollectionImpl(val collection: QuerySnapshot, override val id: Str
     )
 }
 
-internal class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
+private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
     FirebaseFirestore {
     override fun getDocument(path: String, metadataChanges: Boolean): Flow<Document> =
         callbackFlow {

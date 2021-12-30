@@ -32,7 +32,7 @@ private class CollectionImpl(val collection: FIRQuerySnapshot, override val id: 
     )
 }
 
-internal class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
+private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
     FirebaseFirestore {
     override fun getDocument(path: String, metadataChanges: Boolean): Flow<Document> =
         callbackFlow {
@@ -335,7 +335,7 @@ private class QueryImpl(var query: FIRQuery) : Query {
     }
 
     override fun whereArrayContains(field: String, vararg value: Any) {
-        query = query.queryWhereField(field, value)
+        query = query.queryWhereField(field, arrayContains =  value)
     }
 
     override fun whereEqualTo(field: String, value: Any) {
