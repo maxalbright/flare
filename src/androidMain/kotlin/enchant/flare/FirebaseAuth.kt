@@ -8,6 +8,11 @@ import kotlin.coroutines.resume
 import com.google.firebase.auth.FirebaseAuth as AndroidAuth
 import com.google.firebase.auth.FirebaseAuthException as AndroidAuthException
 import com.google.firebase.auth.ActionCodeResult
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import java.lang.Exception
 import java.util.concurrent.TimeUnit
 import com.google.firebase.auth.AuthResult as AndroidAuthResult
 import com.google.firebase.auth.AuthCredential as AndroidAuthCredential
@@ -159,36 +164,37 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     }
 
     override val config: FirebaseAuth.Config = object : FirebaseAuth.Config {
-        override var settings: FirebaseAuth.Config.FirebaseAuthSettings
-            get() = TODO("Not yet implemented")
-            set(value) {}
+        override var settings: FirebaseAuth.Config.FirebaseAuthSettings =
+            FirebaseAuth.Config.FirebaseAuthSettings()
+            set(value) {
+                field = value
+                auth.firebaseAuthSettings.setAppVerificationDisabledForTesting(settings.appVerificationDisabledForTesting)
+            }
 
-        override fun onAuthStateChange(listener: () -> Unit): Listener {
-            TODO("Not yet implemented")
+        override fun onAuthStateChange(): Flow<Unit> = callbackFlow {
+            val listener: AndroidAuth.AuthStateListener =
+                AndroidAuth.AuthStateListener { trySendBlocking(Unit) }
+            auth.addAuthStateListener(listener)
+            awaitClose { auth.removeAuthStateListener(listener) }
         }
 
-        override fun onIdTokenChange(listener: () -> Unit): Listener {
-            TODO("Not yet implemented")
-        }
-
-        override suspend fun getPendingAuthResult(): AuthResult? {
-            TODO("Not yet implemented")
+        override fun onIdTokenChange(): Flow<Unit> = callbackFlow {
+            val listener: AndroidAuth.IdTokenListener =
+                AndroidAuth.IdTokenListener { trySendBlocking(Unit) }
+            auth.addIdTokenListener(listener)
+            awaitClose { auth.removeIdTokenListener(listener) }
         }
 
         override var tenantId: String?
-            get() = TODO("Not yet implemented")
-            set(value) {}
-        override var languageCode: String
-            get() = TODO("Not yet implemented")
-            set(value) {}
+            get() = auth.tenantId
+            set(value) = auth.setTenantId(value ?: "")
+        override var languageCode: String?
+            get() = auth.languageCode
+            set(value) = auth.setLanguageCode(value ?: "")
 
-        override fun useAppLanguage() {
-            TODO("Not yet implemented")
-        }
+        override fun useAppLanguage(): Unit = auth.useAppLanguage()
 
-        override fun useEmulator(host: String, port: Int) {
-            TODO("Not yet implemented")
-        }
+        override fun useEmulator(host: String, port: Int) = auth.useEmulator(host, port)
 
     }
 
@@ -467,6 +473,7 @@ private class AuthCredentialImpl(
         get() = androidCredential
             ?: error("Auth operation not supported for AuthMethod.${provider.name}")
 }
+
 
 internal actual val firebaseAuthInstance: FirebaseAuth by lazy { FirebaseAuthImpl(AndroidAuth.getInstance()) }
 internal actual fun getAuthInstance(app: FirebaseApp): FirebaseAuth =

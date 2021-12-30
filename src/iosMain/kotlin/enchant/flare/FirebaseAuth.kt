@@ -2,6 +2,10 @@ package enchant.flare
 
 import cocoapods.FirebaseAuth.*
 import kotlinx.cinterop.*
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import objcnames.classes.FIRApp
 import platform.Foundation.NSError
@@ -154,8 +158,41 @@ private class FirebaseAuthImpl(val auth: FIRAuth) : FirebaseAuth {
         }
     }
 
-    override val config: FirebaseAuth.Config
-        get() = TODO("Not yet implemented")
+    override val config: FirebaseAuth.Config = object : FirebaseAuth.Config {
+        override var settings: FirebaseAuth.Config.FirebaseAuthSettings
+            get() = auth.settings?.let { toAuthSettings(it) }
+                ?: FirebaseAuth.Config.FirebaseAuthSettings()
+            set(value) {
+                auth.settings = toFIRSettings(value)
+            }
+
+        override fun onAuthStateChange(): Flow<Unit> = callbackFlow {
+            val handle = auth.addAuthStateDidChangeListener { _, _ -> trySendBlocking(Unit) }
+            awaitClose { auth.removeAuthStateDidChangeListener(handle) }
+        }
+
+        override fun onIdTokenChange(): Flow<Unit> = callbackFlow {
+            val handle = auth.addIDTokenDidChangeListener { _, _ -> trySendBlocking(Unit) }
+            awaitClose { auth.removeIDTokenDidChangeListener(handle) }
+        }
+
+        override var tenantId: String?
+            get() = auth.tenantID
+            set(value) {
+                auth.tenantID = value
+            }
+        override var languageCode: String?
+            get() = auth.languageCode
+            set(value) {
+                auth.languageCode = value
+            }
+
+        override fun useAppLanguage(): Unit = auth.useAppLanguage()
+
+        override fun useEmulator(host: String, port: Int) =
+            auth.useEmulatorWithHost(host, port.toLong())
+
+    }
 
     private fun toActionCodeInfo(result: FIRActionCodeInfo): ActionCodeInfo =
         when (result.operation) {
@@ -243,7 +280,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
         user.reloadWithCompletion { error ->
             if (!c.isActive) return@reloadWithCompletion
             if (error == null) c.resume(Unit)
-            else throw toAuthException(error!!)
+            else throw toAuthException(error)
         }
     }
 
@@ -451,6 +488,14 @@ private fun toAuthResult(result: FIRAuthDataResult): AuthResult = AuthResult(
         result.additionalUserInfo!!.newUser
     ) else null, toCredential(result.credential)
 )
+
+private fun toFIRSettings(settings: FirebaseAuth.Config.FirebaseAuthSettings): FIRAuthSettings =
+    FIRAuthSettings().apply {
+        appVerificationDisabledForTesting = settings.appVerificationDisabledForTesting
+    }
+
+private fun toAuthSettings(settings: FIRAuthSettings): FirebaseAuth.Config.FirebaseAuthSettings =
+    FirebaseAuth.Config.FirebaseAuthSettings(settings.appVerificationDisabledForTesting)
 
 private class AuthCredentialImpl(
     private val androidCredential: FIRAuthCredential? = null,

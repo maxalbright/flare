@@ -1,5 +1,7 @@
 package enchant.flare
 
+import kotlinx.coroutines.flow.Flow
+
 interface FirebaseAuth {
 
     suspend fun applyActionCode(code: String)
@@ -27,30 +29,22 @@ interface FirebaseAuth {
         var settings: FirebaseAuthSettings
 
         data class FirebaseAuthSettings(
-            val forceRecaptchaFlowForTesting: Boolean = false,
             val appVerificationDisabledForTesting: Boolean = false,
-            val autoRetrievePhoneNumber: String,
-            val autoRetrieveSmsCode: String
         )
 
-        fun onAuthStateChange(listener: () -> Unit): Listener
-        fun onIdTokenChange(listener: () -> Unit): Listener
-
-        suspend fun getPendingAuthResult(): AuthResult?
-        var tenantId: String?
-        var languageCode: String
+        fun onAuthStateChange(): Flow<Unit>
+        fun onIdTokenChange(): Flow<Unit>
         fun useAppLanguage()
         fun useEmulator(host: String, port: Int)
+
+        val tenantId: String?
+        val languageCode: String?
     }
 
     companion object {
         val instance: FirebaseAuth = firebaseAuthInstance
         fun getInstance(app: FirebaseApp) = getAuthInstance(app)
     }
-}
-
-interface Listener {
-    fun remove()
 }
 
 class FirebaseAuthException(val code: Code) :
