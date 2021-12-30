@@ -23,7 +23,6 @@ import com.google.firebase.auth.ActionCodeSettings as AndroidCodeSettings
 private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun applyActionCode(code: String): Unit = suspendCancellableCoroutine { c ->
         auth.applyActionCode(code).addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (it.isSuccessful) c.resume(Unit)
             else throw toAuthException(it.exception!!)
         }
@@ -32,7 +31,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun checkActionCode(code: String): ActionCodeInfo =
         suspendCancellableCoroutine { c ->
             auth.checkActionCode(code).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(
                     toActionCodeInfo(it.result)
                         ?: throw FirebaseAuthException(FirebaseAuthException.Code.ActionCode)
@@ -44,7 +42,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun confirmPasswordReset(code: String, newPassword: String): Unit =
         suspendCancellableCoroutine { c ->
             auth.confirmPasswordReset(code, newPassword).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw toAuthException(it.exception!!)
             }
@@ -55,7 +52,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
         password: String
     ): AuthResult = suspendCancellableCoroutine { c ->
         auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (it.isSuccessful) c.resume(toAuthResult(it.result))
             else throw toAuthException(it.exception!!)
         }
@@ -64,7 +60,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun fetchSignInProvidersForEmail(email: String): List<AuthProvider> =
         suspendCancellableCoroutine { c ->
             auth.fetchSignInMethodsForEmail(email).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(it.result.signInMethods?.map { toAuthProvider(it) }
                     ?: emptyList())
                 else throw toAuthException(it.exception!!)
@@ -86,7 +81,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             auth.sendPasswordResetEmail(email, settings?.let { toAndroidCodeSettings(settings) })
                 .addOnCompleteListener {
-                    if (!c.isActive) return@addOnCompleteListener
                     if (it.isSuccessful) c.resume(Unit)
                     else throw toAuthException(it.exception!!)
                 }
@@ -96,7 +90,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             auth.sendSignInLinkToEmail(email, toAndroidCodeSettings(settings))
                 .addOnCompleteListener {
-                    if (!c.isActive) return@addOnCompleteListener
                     if (it.isSuccessful) c.resume(Unit)
                     else throw toAuthException(it.exception!!)
                 }
@@ -104,7 +97,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
 
     override suspend fun signInAnonymously(): AuthResult = suspendCancellableCoroutine { c ->
         auth.signInAnonymously().addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (it.isSuccessful) c.resume(toAuthResult(it.result))
             else throw toAuthException(it.exception!!)
         }
@@ -117,7 +109,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             auth.signInWithCredential((credential as AuthCredentialImpl).credential)
                 .addOnCompleteListener {
-                    if (!c.isActive) return@addOnCompleteListener
                     if (it.isSuccessful) c.resume(toAuthResult(it.result))
                     else throw toAuthException(it.exception!!)
                 }
@@ -126,7 +117,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun signInWithCustomToken(token: String): AuthResult =
         suspendCancellableCoroutine { c ->
             auth.signInWithCustomToken(token).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(toAuthResult(it.result))
                 else throw toAuthException(it.exception!!)
             }
@@ -135,7 +125,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun signInWithEmailAndPassword(email: String, password: String): AuthResult =
         suspendCancellableCoroutine { c ->
             auth.signInWithEmailAndPassword(email, password).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(toAuthResult(it.result))
                 else throw toAuthException(it.exception!!)
             }
@@ -144,7 +133,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun signInWithEmailLink(email: String, link: String): Unit =
         suspendCancellableCoroutine { c ->
             auth.signInWithEmailLink(email, link).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw toAuthException(it.exception!!)
             }
@@ -153,7 +141,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
     override suspend fun verifyPasswordResetCode(code: String): String =
         suspendCancellableCoroutine { c ->
             auth.verifyPasswordResetCode(code).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(it.result)
                 else throw toAuthException(it.exception!!)
             }
@@ -221,7 +208,6 @@ private class FirebaseAuthImpl(val auth: AndroidAuth) : FirebaseAuth {
 private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : FirebaseUser {
     override suspend fun delete(): Unit = suspendCancellableCoroutine { c ->
         user.delete().addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (it.isSuccessful) c.resume(Unit)
             else throw toAuthException(it.exception!!)
         }
@@ -233,7 +219,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
     override suspend fun getIdToken(forceRefresh: Boolean): TokenResult =
         suspendCancellableCoroutine { c ->
             user.getIdToken(forceRefresh).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(toTokenResult(it.result))
                 else throw toAuthException(it.exception!!)
             }
@@ -266,7 +251,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
         suspendCancellableCoroutine { c ->
             user.linkWithCredential((credential as AuthCredentialImpl).credential)
                 .addOnCompleteListener {
-                    if (!c.isActive) return@addOnCompleteListener
                     if (it.isSuccessful) c.resume(toAuthResult(it.result))
                     else throw toAuthException(it.exception!!)
                 }
@@ -279,7 +263,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
         suspendCancellableCoroutine { c ->
             user.reauthenticateAndRetrieveData((credential as AuthCredentialImpl).credential)
                 .addOnCompleteListener {
-                    if (!c.isActive) return@addOnCompleteListener
                     if (it.isSuccessful) c.resume(toAuthResult(it.result))
                     else throw toAuthException(it.exception!!)
                 }
@@ -287,7 +270,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
 
     override suspend fun reload(): Unit = suspendCancellableCoroutine { c ->
         user.reload().addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (it.isSuccessful) c.resume(Unit)
             else throw toAuthException(it.exception!!)
         }
@@ -297,7 +279,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
         suspendCancellableCoroutine { c ->
             (if (settings == null) user.sendEmailVerification()
             else user.sendEmailVerification(toAndroidCodeSettings(settings))).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw toAuthException(it.exception!!)
             }
@@ -306,7 +287,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
     override suspend fun unlink(provider: AuthProvider): Unit =
         suspendCancellableCoroutine { c ->
             user.unlink(toAuthString(provider)).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw toAuthException(it.exception!!)
             }
@@ -314,7 +294,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
 
     override suspend fun updateEmail(email: String): Unit = suspendCancellableCoroutine { c ->
         user.updateEmail(email).addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (it.isSuccessful) c.resume(Unit)
             else throw toAuthException(it.exception!!)
         }
@@ -323,7 +302,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
     override suspend fun updatePassword(password: String): Unit =
         suspendCancellableCoroutine { c ->
             user.updatePassword(password).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw toAuthException(it.exception!!)
             }
@@ -335,7 +313,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
                 if (displayName != null) setDisplayName(displayName)
                 if (photoUrl != null) photoUri = Uri.parse(photoUrl)
             }.build()).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw toAuthException(it.exception!!)
             }
@@ -348,7 +325,6 @@ private class FirebaseUserImpl(val user: AndroidUser, val auth: AndroidAuth) : F
         (if (settings == null) user.verifyBeforeUpdateEmail(newEmail)
         else user.verifyBeforeUpdateEmail(newEmail, toAndroidCodeSettings(settings)))
             .addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw toAuthException(it.exception!!)
             }

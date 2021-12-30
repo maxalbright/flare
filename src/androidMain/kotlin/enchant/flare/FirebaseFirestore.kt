@@ -41,7 +41,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         callbackFlow {
             val registration = firestore.document(path)
                 .addSnapshotListener(if (metadataChanges) MetadataChanges.INCLUDE else MetadataChanges.EXCLUDE) { data, error ->
-                    ensureActive()
                     when {
                         data != null -> trySendBlocking(DocumentImpl(data))
                         error!!.code == AndroidCode.CANCELLED -> return@addSnapshotListener
@@ -54,7 +53,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
     override suspend fun getDocumentOnce(path: String, source: Source): Document =
         suspendCancellableCoroutine { c ->
             firestore.document(path).get(toAndroidSource(source)).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(DocumentImpl(it.result))
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -66,7 +64,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
             val task = if (merge == Merge.None) firestore.document(path).set(data)
             else firestore.document(path).set(data, toSetOptions(merge)!!)
             task.addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -75,7 +72,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
     override suspend fun updateDocument(path: String, data: Map<String, Any>): Unit =
         suspendCancellableCoroutine { c ->
             firestore.document(path).update(data).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -84,7 +80,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
     override suspend fun deleteDocument(path: String): Unit =
         suspendCancellableCoroutine { c ->
             firestore.document(path).delete().addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -100,7 +95,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         val registration = q.addSnapshotListener(
             if (metadataChanges) MetadataChanges.INCLUDE else MetadataChanges.EXCLUDE
         ) { data, error ->
-            ensureActive()
             when {
                 data != null ->
                     trySendBlocking(CollectionImpl(data, path.takeLastWhile { it != '/' }))
@@ -119,7 +113,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         val collection = firestore.collection(path)
         val q = QueryImpl(collection).also { query(it) }.query
         q.get(toAndroidSource(source)).addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (it.isSuccessful)
                 c.resume(CollectionImpl(it.result, path.takeLastWhile { it != '/' }))
             else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
@@ -134,14 +127,12 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         var registration: ListenerRegistration? = null
         firestore.getNamedQuery(name).addOnCompleteListener {
-            ensureActive()
             if (!it.isSuccessful) throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             val q = QueryImpl(it.result).also { query(it) }.query
 
             registration = q.addSnapshotListener(
                 if (metadataChanges) MetadataChanges.INCLUDE else MetadataChanges.EXCLUDE
             ) { data, error ->
-                ensureActive()
                 when {
                     data != null ->
                         trySendBlocking(CollectionImpl(data, data.documents[0].reference.parent.id))
@@ -159,11 +150,9 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         query: Query.() -> Unit
     ): Collection = suspendCancellableCoroutine { c ->
         firestore.getNamedQuery(name).addOnCompleteListener {
-            if (!c.isActive) return@addOnCompleteListener
             if (!it.isSuccessful) throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             val q = QueryImpl(it.result).also { query(it) }.query
             q.get(toAndroidSource(source)).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful)
                     c.resume(CollectionImpl(it.result, it.result.documents[0].reference.parent.id))
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
@@ -174,7 +163,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
     override suspend fun batch(batch: WriteBatch.() -> Unit): Unit =
         suspendCancellableCoroutine { c ->
             firestore.runBatch { batch(WriteBatchImpl(firestore, it)) }.addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (!it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -184,7 +172,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         suspendCancellableCoroutine { c ->
             firestore.runTransaction { transaction(TransactionImpl(firestore, it)) }
                 .addOnCompleteListener {
-                    if (!c.isActive) return@addOnCompleteListener
                     if (!it.isSuccessful) c.resume(Unit)
                     else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
                 }
@@ -201,7 +188,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         override suspend fun loadBundle(data: Array<Byte>): Unit = suspendCancellableCoroutine { c ->
             firestore.loadBundle(data.toByteArray()).addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -215,7 +201,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         override suspend fun clearPersistence(): Unit = suspendCancellableCoroutine { c ->
             firestore.clearPersistence().addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -224,7 +209,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         override suspend fun enableNetwork(enabled: Boolean): Unit =
             suspendCancellableCoroutine { c ->
                 (if (enabled) firestore.enableNetwork() else firestore.disableNetwork()).addOnCompleteListener {
-                    if (!c.isActive) return@addOnCompleteListener
                     if (it.isSuccessful) c.resume(Unit)
                     else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
                 }
@@ -232,7 +216,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         override suspend fun terminate(): Unit = suspendCancellableCoroutine { c ->
             firestore.terminate().addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -240,7 +223,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         override suspend fun waitForPendingWrites(): Unit = suspendCancellableCoroutine { c ->
             firestore.waitForPendingWrites().addOnCompleteListener {
-                if (!c.isActive) return@addOnCompleteListener
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }

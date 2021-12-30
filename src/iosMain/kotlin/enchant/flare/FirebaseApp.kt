@@ -46,7 +46,7 @@ private fun toFIROptions(options: FirebaseOptions): FIROptions =
         setDatabaseURL(options.databaseUrl)
         setProjectID(options.projectId)
         setTrackingID(options.gaTrackingId)
-        if (options.gcmSenderId != null) setGCMSenderID(options.gcmSenderId!!)
+        if (options.gcmSenderId != null) setGCMSenderID(options.gcmSenderId)
         setStorageBucket(options.gcmSenderId)
         setBundleID(bundleID)
         setClientID(clientID)

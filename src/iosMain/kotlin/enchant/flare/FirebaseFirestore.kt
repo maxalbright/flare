@@ -38,7 +38,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         callbackFlow {
             val registration = firestore.documentWithPath(path)
                 .addSnapshotListenerWithIncludeMetadataChanges(metadataChanges) { data, error ->
-                    ensureActive()
                     when {
                         data != null -> trySendBlocking(DocumentImpl(data))
                         error!!.code == FIRFirestoreErrorCodeCancelled -> return@addSnapshotListenerWithIncludeMetadataChanges
@@ -52,7 +51,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         suspendCancellableCoroutine { c ->
             firestore.documentWithPath(path)
                 .getDocumentWithSource(toFIRSource(source)) { data, error ->
-                    if (!c.isActive) return@getDocumentWithSource
                     if (data != null) c.resume(DocumentImpl(data))
                     else throw FirebaseFirestoreException(toFirestoreExceptionCode(error!!.code))
                 }
@@ -62,10 +60,8 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
     override suspend fun setDocument(path: String, data: Map<String, Any>, merge: Merge): Unit =
         suspendCancellableCoroutine { c ->
             val completion: (NSError?) -> Unit = { error ->
-                if (c.isActive) {
-                    if (error == null) c.resume(Unit)
-                    else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
-                }
+                if (error == null) c.resume(Unit)
+                else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
             val document = firestore.documentWithPath(path)
             if (merge is Merge.Fields)
@@ -77,7 +73,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         suspendCancellableCoroutine { c ->
             val document = firestore.documentWithPath(path)
             document.updateData(data as Map<Any?, *>) { error ->
-                if (!c.isActive) return@updateData
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
@@ -87,7 +82,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         suspendCancellableCoroutine { c ->
             val document = firestore.documentWithPath(path)
             document.deleteDocumentWithCompletion { error ->
-                if (!c.isActive) return@deleteDocumentWithCompletion
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
@@ -102,7 +96,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         val q = QueryImpl(collection).also { query(it) }.query
         val registration =
             q.addSnapshotListenerWithIncludeMetadataChanges(metadataChanges) { data, error ->
-                ensureActive()
                 when {
                     data != null ->
                         trySendBlocking(CollectionImpl(data, path.takeLastWhile { it != '/' }))
@@ -121,7 +114,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         val collection = firestore.collectionWithPath(path)
         val q = QueryImpl(collection).also { query(it) }.query
         q.getDocumentsWithSource(toFIRSource(source)) { data, error ->
-            if (!c.isActive) return@getDocumentsWithSource
             if (data != null) c.resume(CollectionImpl(data, path.takeLastWhile { it != '/' }))
             else throw FirebaseFirestoreException(toFirestoreExceptionCode(error!!.code))
         }
@@ -135,14 +127,12 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
         var registration: FIRListenerRegistrationProtocol? = null
         firestore.getQueryNamed(name) {
-            ensureActive()
             if (it == null) throw FirebaseFirestoreException(
                 toFirestoreExceptionCode(FIRFirestoreErrorCodeNotFound)
             )
             val q = QueryImpl(it).also { query(it) }.query
             registration =
                 q.addSnapshotListenerWithIncludeMetadataChanges(metadataChanges) { data, error ->
-                    ensureActive()
                     when {
                         data != null -> trySendBlocking(
                             CollectionImpl(
@@ -165,13 +155,11 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
     ): Collection = suspendCancellableCoroutine { c ->
 
         firestore.getQueryNamed(name) {
-            if (!c.isActive) return@getQueryNamed
             if (it == null) throw FirebaseFirestoreException(
                 toFirestoreExceptionCode(FIRFirestoreErrorCodeNotFound)
             )
             val q = QueryImpl(it).also { query(it) }.query
             q.getDocumentsWithSource(toFIRSource(source)) { data, error ->
-                if (!c.isActive) return@getDocumentsWithSource
                 when {
                     data != null -> c.resume(
                         CollectionImpl(
@@ -189,7 +177,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
     override suspend fun batch(batch: WriteBatch.() -> Unit): Unit =
         suspendCancellableCoroutine { c ->
             firestore.batch().also { batch(WriteBatchImpl(firestore, it)) }.commitWithCompletion {
-                if (!c.isActive) return@commitWithCompletion
                 if (it == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(it.code))
             }
@@ -200,7 +187,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
             firestore.runTransactionWithBlock({ transaction, _ ->
                 transaction(TransactionImpl(firestore, transaction!!))
             }) { data, error ->
-                if (!c.isActive) return@runTransactionWithBlock
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
@@ -226,7 +212,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                             data.size.toULong()
                         )
                     ) { data, error ->
-                        if (!c.isActive) return@loadBundle
                         if (error == null) c.resume(Unit)
                         else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
                     }
@@ -241,7 +226,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
         override suspend fun clearPersistence(): Unit = suspendCancellableCoroutine { c ->
             firestore.clearPersistenceWithCompletion { error ->
-                if (!c.isActive) return@clearPersistenceWithCompletion
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
@@ -250,10 +234,8 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         override suspend fun enableNetwork(enabled: Boolean): Unit =
             suspendCancellableCoroutine { c ->
                 val completion: (NSError?) -> Unit = { error ->
-                    if (c.isActive) {
-                        if (error == null) c.resume(Unit)
-                        else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
-                    }
+                    if (error == null) c.resume(Unit)
+                    else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
                 }
                 if (enabled) firestore.enableNetworkWithCompletion(completion)
                 else firestore.disableNetworkWithCompletion(completion)
@@ -261,7 +243,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
         override suspend fun terminate(): Unit = suspendCancellableCoroutine { c ->
             firestore.terminateWithCompletion { error ->
-                if (!c.isActive) return@terminateWithCompletion
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
@@ -269,7 +250,6 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
         override suspend fun waitForPendingWrites(): Unit = suspendCancellableCoroutine { c ->
             firestore.waitForPendingWritesWithCompletion { error ->
-                if (!c.isActive) return@waitForPendingWritesWithCompletion
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
@@ -335,7 +315,7 @@ private class QueryImpl(var query: FIRQuery) : Query {
     }
 
     override fun whereArrayContains(field: String, vararg value: Any) {
-        query = query.queryWhereField(field, arrayContains =  value)
+        query = query.queryWhereField(field, arrayContains = value)
     }
 
     override fun whereEqualTo(field: String, value: Any) {
@@ -422,6 +402,7 @@ internal actual val firestoreInstance: FirebaseFirestore by lazy {
     FirebaseFirestoreImpl(FIRFirestore.firestore())
 }
 
+@Suppress("TYPE_MISMATCH")
 internal actual fun getFirestoreInstance(app: FirebaseApp): FirebaseFirestore =
-    FirebaseFirestoreImpl(FIRFirestore.firestoreForApp(app.app as FIRApp))
+    FirebaseFirestoreImpl(FIRFirestore.firestoreForApp(app.app))
 
