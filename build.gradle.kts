@@ -29,6 +29,7 @@ kotlin {
         pod("FirebaseFirestore", "8.10.0")
         pod("FirebaseFunctions", "8.10.0")
         pod("FirebaseStorage", "8.10.0")
+        pod("GoogleSignIn", "6.1.0")
     }
 
 
@@ -54,6 +55,8 @@ kotlin {
                 implementation("com.google.firebase:firebase-auth:21.0.1")
                 implementation("com.google.firebase:firebase-storage:20.0.0")
                 implementation("com.google.firebase:firebase-functions:20.0.1")
+                implementation("com.google.android.gms:play-services-auth:20.0.0")
+                implementation("com.facebook.android:facebook-login:12.2.0")
             }
         }
 

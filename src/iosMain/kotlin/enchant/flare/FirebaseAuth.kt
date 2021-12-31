@@ -1,16 +1,26 @@
 package enchant.flare
 
 import cocoapods.FirebaseAuth.*
+import cocoapods.GoogleSignIn.GIDConfiguration
+import cocoapods.GoogleSignIn.GIDSignIn
 import kotlinx.cinterop.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
-import objcnames.classes.FIRApp
-import platform.Foundation.NSError
-import platform.Foundation.NSURL
-import platform.Foundation.timeIntervalSince1970
+import objcnames.classes.Protocol
+import platform.AuthenticationServices.*
+import platform.CoreCrypto.CC_SHA256
+import platform.CoreCrypto.CC_SHA256_DIGEST_LENGTH
+import platform.Foundation.*
+import platform.Security.SecRandomCopyBytes
+import platform.Security.errSecSuccess
+import platform.Security.kSecRandomDefault
+import platform.UIKit.UIViewController
+import platform.UIKit.window
+import platform.darwin.NSObject
+import platform.darwin.NSUInteger
 import kotlin.coroutines.resume
 
 
@@ -37,16 +47,6 @@ private class FirebaseAuthImpl(val auth: FIRAuth) : FirebaseAuth {
                 else throw toAuthException(error)
             }
         }
-
-    override suspend fun createUserWithEmailAndPassword(
-        email: String,
-        password: String
-    ): AuthResult = suspendCancellableCoroutine { c ->
-        auth.createUserWithEmail(email, password) { data, error ->
-            if (data != null) c.resume(toAuthResult(data))
-            else throw toAuthException(error!!)
-        }
-    }
 
     override suspend fun fetchSignInProvidersForEmail(email: String): List<AuthProvider> =
         suspendCancellableCoroutine { c ->
@@ -83,50 +83,17 @@ private class FirebaseAuthImpl(val auth: FIRAuth) : FirebaseAuth {
             }
         }
 
-    override suspend fun signInAnonymously(): AuthResult = suspendCancellableCoroutine { c ->
-        auth.signInAnonymouslyWithCompletion { data, error ->
-            if (data != null) c.resume(toAuthResult(data))
-            else throw toAuthException(error!!)
+    override suspend fun signIn(method: AuthMethod): AdditionalUserInfo {
+        val credential = toCredentialHolder(method, auth)
+        return if (credential.credential == null)
+            toUserInfo(getAltResult(credential.method!!, auth, AuthAction.SignIn))
+        else suspendCancellableCoroutine { c ->
+            auth.signInWithCredential(credential.credential!!) { data, error ->
+                if (data != null) c.resume(toUserInfo(data))
+                else throw toAuthException(error!!)
+            }
         }
     }
-
-    override suspend fun signIn(method: AuthMethod): AuthResult =
-        signIn(toAuthCredential(method, auth))
-
-    @Suppress("UNREACHABLE_CODE")
-    override suspend fun signIn(credential: AuthCredential): AuthResult =
-        suspendCancellableCoroutine { c ->
-            auth.signInWithCredential((credential as AuthCredentialImpl).credential) { data, error ->
-                if (data != null) c.resume(toAuthResult(data))
-                else throw toAuthException(error!!)
-            }
-        }
-
-    override suspend fun signInWithCustomToken(token: String): AuthResult =
-        suspendCancellableCoroutine { c ->
-            auth.signInWithCustomToken(token) { data, error ->
-                if (data != null) c.resume(toAuthResult(data))
-                else throw toAuthException(error!!)
-            }
-        }
-
-    override suspend fun signInWithEmailAndPassword(email: String, password: String): AuthResult =
-        suspendCancellableCoroutine { c ->
-            auth.signInWithEmail(email, password = password) { data, error ->
-                if (data != null) c.resume(toAuthResult(data))
-                else throw toAuthException(error!!)
-            }
-        }
-
-    override suspend fun signInWithEmailLink(email: String, link: String): Unit =
-        suspendCancellableCoroutine { c ->
-            auth.sendSignInLinkToEmail(
-                email,
-                FIRActionCodeSettings().apply { URL = NSURL(string = link) }) { error ->
-                if (error == null) c.resume(Unit)
-                else throw toAuthException(error)
-            }
-        }
 
     override suspend fun verifyPasswordResetCode(code: String): String =
         suspendCancellableCoroutine { c ->
@@ -135,6 +102,9 @@ private class FirebaseAuthImpl(val auth: FIRAuth) : FirebaseAuth {
                 else throw toAuthException(error!!)
             }
         }
+
+    override fun isSignInWithEmailLink(link: String): Boolean =
+        auth.isSignInWithEmailLink(link)
 
     override fun signOut() {
         memScoped {
@@ -236,27 +206,29 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
     override val uid: String get() = user.uid
     override val isAnonymous: Boolean get() = user.isAnonymous()
 
-    override suspend fun linkWithMethod(method: AuthMethod): AuthResult =
-        linkWithMethod(toAuthCredential(method, auth))
-
-    override suspend fun linkWithMethod(credential: AuthCredential): AuthResult =
-        suspendCancellableCoroutine { c ->
-            user.linkWithCredential((credential as AuthCredentialImpl).credential) { data, error ->
-                if (data != null) c.resume(toAuthResult(data))
+    override suspend fun linkMethod(method: AuthMethod): AdditionalUserInfo {
+        val credential = toCredentialHolder(method, auth)
+        return if (credential.credential == null)
+            toUserInfo(getAltResult(credential.method!!, auth, AuthAction.Link))
+        else suspendCancellableCoroutine { c ->
+            user.linkWithCredential(credential.credential) { data, error ->
+                if (data != null) c.resume(toUserInfo(data))
                 else throw toAuthException(error!!)
             }
         }
+    }
 
-    override suspend fun reauthenticate(method: AuthMethod): AuthResult =
-        reauthenticate(toAuthCredential(method, auth))
-
-    override suspend fun reauthenticate(credential: AuthCredential): AuthResult =
-        suspendCancellableCoroutine { c ->
-            user.reauthenticateWithCredential((credential as AuthCredentialImpl).credential) { data, error ->
-                if (data != null) c.resume(toAuthResult(data))
+    override suspend fun reauthenticate(method: AuthMethod): AdditionalUserInfo {
+        val credential = toCredentialHolder(method, auth)
+        return if (credential.credential == null)
+            toUserInfo(getAltResult(credential.method!!, auth, AuthAction.Reauthenticate))
+        else suspendCancellableCoroutine { c ->
+            user.reauthenticateWithCredential(credential.credential) { data, error ->
+                if (data != null) c.resume(toUserInfo(data))
                 else throw toAuthException(error!!)
             }
         }
+    }
 
     override suspend fun reload(): Unit = suspendCancellableCoroutine { c ->
         user.reloadWithCompletion { error ->
@@ -276,7 +248,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
             )
         }
 
-    override suspend fun unlink(provider: AuthProvider): Unit =
+    override suspend fun unlinkMethod(provider: AuthProvider): Unit =
         suspendCancellableCoroutine { c ->
             user.unlinkFromProvider(toAuthString(provider)) { data, error ->
                 if (data != null) c.resume(Unit)
@@ -337,60 +309,317 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
     )
 }
 
+private enum class AuthAction { SignIn, Reauthenticate, Link }
 
-private fun toAuthCredential(method: AuthMethod, auth: FIRAuth): AuthCredential =
-    when (method) {
-        is AuthMethod.AppleAndroid -> error("Android Apple authentication is not supported on iOS")
-        is AuthMethod.AppleiOS ->
-            AuthCredentialImpl(
+private suspend fun getAltResult(method: AuthMethod, auth: FIRAuth, action: AuthAction)
+        : FIRAuthDataResult = when (method) {
+    AuthMethod.Annonymous -> getAnnonymousResult(auth, action)
+    is AuthMethod.Custom -> getCustomResult(method, auth, action)
+    is AuthMethod.EmailLink -> getEmailLinkResult(method, auth, action)
+    is AuthMethod.EmailPassword -> getEmailPasswordResult(method, auth, action)
+    else -> error("Unsupported AuthMethod $method used")
+}
+
+private suspend fun getAnnonymousResult(
+    auth: FIRAuth,
+    action: AuthAction
+): FIRAuthDataResult = suspendCancellableCoroutine { c ->
+    if (action != AuthAction.SignIn) error("Annonymous reauthentication and linking are invalid operations")
+    auth.signInAnonymouslyWithCompletion { data, error ->
+        if (data != null) c.resume(data)
+        else throw toAuthException(error!!)
+    }
+}
+
+private suspend fun getCustomResult(
+    method: AuthMethod.Custom,
+    auth: FIRAuth,
+    action: AuthAction
+): FIRAuthDataResult = suspendCancellableCoroutine { c ->
+    if (action != AuthAction.SignIn) error("Custom token reauthentication and linking are invalid operations")
+    auth.signInWithCustomToken(method.token) { data, error ->
+        if (data != null) c.resume(data)
+        else throw toAuthException(error!!)
+    }
+}
+
+private suspend fun getEmailPasswordResult(
+    method: AuthMethod.EmailPassword,
+    auth: FIRAuth,
+    action: AuthAction
+): FIRAuthDataResult = suspendCancellableCoroutine { c ->
+    if (action == AuthAction.SignIn) auth.signInWithEmail(
+        email = method.email,
+        password = method.password
+    ) { data, error ->
+        if (data != null) c.resume(data)
+        else auth.createUserWithEmail(method.email, method.password) { data, error ->
+            if (data != null) c.resume(data) else throw toAuthException(error!!)
+        }
+    }
+    else {
+        val completion: (FIRAuthDataResult?, NSError?) -> Unit = { data, error ->
+            if (data != null) c.resume(data)
+            else throw toAuthException(error!!)
+        }
+        val credential =
+            FIREmailAuthProvider.credentialWithEmail(method.email, password = method.password)
+        if (action == AuthAction.Reauthenticate)
+            auth.currentUser!!.reauthenticateWithCredential(credential, completion)
+        else auth.currentUser!!.linkWithCredential(credential, completion)
+    }
+}
+
+private suspend fun getEmailLinkResult(
+    method: AuthMethod.EmailLink,
+    auth: FIRAuth,
+    action: AuthAction
+): FIRAuthDataResult = suspendCancellableCoroutine { c ->
+    if (action == AuthAction.SignIn) auth.signInWithEmail(
+        email = method.email,
+        link = method.link
+    ) { data, error ->
+        if (data != null) c.resume(data)
+        else throw toAuthException(error!!)
+    }
+    else {
+        val completion: (FIRAuthDataResult?, NSError?) -> Unit = { data, error ->
+            if (data != null) c.resume(data)
+            else throw toAuthException(error!!)
+        }
+        val credential = FIREmailAuthProvider.credentialWithEmail(method.email, link = method.link)
+        if (action == AuthAction.Reauthenticate)
+            auth.currentUser!!.reauthenticateWithCredential(credential, completion)
+        else auth.currentUser!!.linkWithCredential(credential, completion)
+    }
+}
+
+private suspend fun getOAuthCredential(oAuthProvider: FIROAuthProvider): FIRAuthCredential =
+    suspendCancellableCoroutine { c ->
+        oAuthProvider.getCredentialWithUIDelegate(null) { data, error ->
+            if (error != null) throw toAuthException(error)
+            c.resume(data!!)
+        }
+    }
+
+private suspend fun getTwitterCredential(
+    method: AuthMethod.Twitter,
+    auth: FIRAuth,
+): FIRAuthCredential {
+    val provider: FIROAuthProvider =
+        FIROAuthProvider.providerWithProviderID("twitter.com", auth)
+    return getOAuthCredential(
+        provider.apply {
+            setCustomParameters(buildMap {
+                if (method.locale != null) put("lang", method.locale)
+            } as Map<Any?, *>)
+        })
+}
+
+
+private suspend fun getGitHubCredential(
+    method: AuthMethod.GitHub,
+    auth: FIRAuth,
+): FIRAuthCredential {
+    val provider: FIROAuthProvider = FIROAuthProvider.providerWithProviderID("github.com", auth)
+    return getOAuthCredential(
+        provider.apply {
+            scopes = buildList {
+                if (method.requestEmail) add("user:email")
+            }
+            setCustomParameters(buildMap {
+                if (method.loginHint != null) put("login", method.loginHint)
+                if (method.allowSignUp) put("allow_signup", "true")
+            } as Map<Any?, *>)
+
+        })
+}
+
+private suspend fun getAppleCredential(
+    method: AuthMethod.Apple,
+): FIRAuthCredential = suspendCancellableCoroutine { c ->
+    val nonce = randomNonceString()
+    val provider = ASAuthorizationAppleIDProvider()
+    val request = provider.createRequest()
+    request.requestedScopes = buildList {
+        if (method.requestEmail) add(ASAuthorizationScopeEmail)
+        if (method.requestName) add(ASAuthorizationScopeFullName)
+    }
+    request.nonce = sha256(nonce)
+
+    val controller = ASAuthorizationController(listOf(request))
+    val delegate = AppleDelegate(method.ui as UIViewController) { authorization ->
+        if (authorization == null)
+            throw FirebaseAuthException(FirebaseAuthException.Code.Unknown)
+        else {
+            val appleIDCredential = (authorization.credential as? ASAuthorizationAppleIDCredential)
+                ?: return@AppleDelegate
+
+            val appleIDToken = appleIDCredential.identityToken
+                ?: run { println("Unable to fetch identity token"); return@AppleDelegate }
+
+            val idToken = NSString.create(appleIDToken, NSUTF8StringEncoding)
+                ?: error("Unable to serialize token string from data: $appleIDToken")
+
+            // Initialize a Firebase credential.
+            c.resume(
                 FIROAuthProvider.credentialWithProviderID(
                     "apple.com",
-                    method.idToken,
-                    rawNonce = method.rawNonce
-                ), provider = AuthProvider.Apple
+                    IDToken = idToken.toString(),
+                    rawNonce = nonce
+                )
             )
-        is AuthMethod.EmailLink ->
-            AuthCredentialImpl(
-                FIREmailAuthProvider.credentialWithEmail(method.email, link = method.emailLink),
-                provider = AuthProvider.EmailLink
-            )
-        is AuthMethod.EmailPassword ->
-            AuthCredentialImpl(
-                FIREmailAuthProvider.credentialWithEmail(method.email, password = method.password),
-                provider = AuthProvider.EmailPassword
-            )
-        is AuthMethod.Facebook ->
-            AuthCredentialImpl(
-                FIRFacebookAuthProvider.credentialWithAccessToken(method.accessToken),
-                provider = AuthProvider.Facebook
-            )
-        is AuthMethod.Github ->
-            AuthCredentialImpl(
-                FIRGitHubAuthProvider.credentialWithToken(method.token),
-                provider = AuthProvider.GitHub
-            )
-        is AuthMethod.Google ->
-            AuthCredentialImpl(
-                FIRGoogleAuthProvider.credentialWithIDToken(method.idToken, method.accessToken),
-                provider = AuthProvider.Google
-            )
+        }
+    }
+    controller.delegate = delegate
+    controller.presentationContextProvider = delegate
+    controller.performRequests()
+}
 
-        is AuthMethod.Phone -> AuthCredentialImpl(
-            FIRPhoneAuthProvider.providerWithAuth(auth)
-                .credentialWithVerificationID(method.verificationId, method.smsCode),
-            provider = AuthProvider.Phone
+private fun sha256(input: String): String {
+    val hashed = StringBuilder()
+    memScoped {
+        val string = input.utf8
+        val result = allocArray<UByteVar>(CC_SHA256_DIGEST_LENGTH)
+        CC_SHA256(string, string.size.toUInt(), result)
+
+        (0 until CC_SHA256_DIGEST_LENGTH).map {
+            hashed.append(NSString.stringWithFormat("%02x", result[it]))
+        }
+    }
+    return hashed.toString()
+}
+
+private fun randomNonceString(): String {
+    val charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._"
+    var result = ""
+    var remainingLength = 32
+
+    memScoped {
+        while (remainingLength > 0) {
+            val randoms: List<Byte> = (0 until 16).map {
+                val random = ByteArray(1).toCValues()
+                val errorCode = SecRandomCopyBytes(kSecRandomDefault, 1, random)
+                if (errorCode != errSecSuccess)
+                    throw(FirebaseAuthException(FirebaseAuthException.Code.Unknown))
+                random.getBytes()[0]
+            }
+
+            randoms.forEach { random ->
+                if (remainingLength == 0) return@forEach
+
+                if (random < charset.count()) {
+                    result += (charset[random.toInt()])
+                    remainingLength -= 1
+                }
+            }
+        }
+    }
+
+    return result
+}
+
+private suspend fun getYahooCredential(method: AuthMethod.Yahoo, auth: FIRAuth):
+        FIRAuthCredential {
+    val provider: FIROAuthProvider = FIROAuthProvider.providerWithProviderID("yahoo.com", auth)
+    return getOAuthCredential(
+        provider.apply {
+            scopes = buildList {
+                if (method.requestEmail) add("email")
+                if (method.requestProfile) add("profile")
+            }
+            setCustomParameters(buildMap {
+                if (method.language != null) put("language", method.language)
+                if (method.prompt != null) put("prompt", method.prompt)
+                if (method.maxAge != null) put("max_age", method.maxAge.toString())
+            } as Map<Any?, *>)
+
+        })
+
+}
+
+private class AppleDelegate(val ui: UIViewController, val onComplete: (ASAuthorization?) -> Unit) : NSObject(),
+    ASAuthorizationControllerDelegateProtocol,
+    ASAuthorizationControllerPresentationContextProvidingProtocol {
+    override fun authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithError: NSError
+    ) {
+        onComplete(null)
+    }
+
+    override fun authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithAuthorization: ASAuthorization
+    ) {
+        onComplete(didCompleteWithAuthorization)
+    }
+
+    override fun `class`(): ObjCClass = TODO("Not yet implemented")
+
+    override fun description(): String? = null
+
+    override fun hash(): NSUInteger = hashCode().toULong()
+
+    override fun isEqual(`object`: Any?): Boolean {
+        return `object`.hashCode() == hashCode()
+    }
+
+    override fun isKindOfClass(aClass: ObjCClass?): Boolean = TODO("Not yet implemented")
+
+    override fun isMemberOfClass(aClass: ObjCClass?): Boolean = TODO("Not yet implemented")
+
+    override fun isProxy(): Boolean = TODO("Not yet implemented")
+
+    override fun performSelector(aSelector: COpaquePointer?): Any =
+        TODO("Not yet implemented")
+
+    override fun performSelector(aSelector: COpaquePointer?, withObject: Any?, _withObject: Any?)
+            : Any = TODO("Not yet implemented")
+
+    override fun performSelector(aSelector: COpaquePointer?, withObject: Any?): Any =
+        TODO("Not yet implemented")
+
+    override fun respondsToSelector(aSelector: COpaquePointer?): Boolean =
+        TODO("Not yet implemented")
+
+    @Suppress
+    override fun superclass(): ObjCClass? =
+        (ASAuthorizationControllerDelegateProtocol::`class`)(this)
+
+    override fun conformsToProtocol(aProtocol: Protocol?): Boolean = TODO("Not yet implemented")
+    override fun presentationAnchorForAuthorizationController(controller: ASAuthorizationController): ASPresentationAnchor =
+        ui.view.window
+}
+
+
+private suspend fun toCredentialHolder(method: AuthMethod, auth: FIRAuth): CredentialHolder =
+    when (method) {
+        is AuthMethod.Apple -> CredentialHolder(getAppleCredential(method))
+        AuthMethod.Annonymous -> CredentialHolder(method = method)
+        is AuthMethod.Custom -> CredentialHolder(method = method)
+        is AuthMethod.EmailLink -> CredentialHolder(method = method)
+        is AuthMethod.EmailPassword -> CredentialHolder(method = method)
+        is AuthMethod.GitHub -> CredentialHolder(
+            getGitHubCredential(method, auth)
         )
-        is AuthMethod.PlayGames -> error("AuthMethod.PlayGames is not supproted on iOS")
-        is AuthMethod.Twitter -> AuthCredentialImpl(
-            FIRTwitterAuthProvider.credentialWithToken(method.token, method.secret),
-            provider = AuthProvider.Twitter
-        )
-        is AuthMethod.Yahoo -> AuthCredentialImpl(
-            oAuthProvider = FIROAuthProvider.providerWithProviderID("yahoo.com").apply {
-                scopes = method.scopes
-                customParameters = method.params as Map<Any?, *>
-            }, provider = AuthProvider.Yahoo
-        )
+        is AuthMethod.Google -> suspendCancellableCoroutine { c ->
+            GIDSignIn.sharedInstance.signInWithConfiguration(
+                GIDConfiguration(method.webClientId),
+                method.ui as UIViewController
+            ) { data, error ->
+                if (error != null) throw toAuthException(error)
+                c.resume(
+                    CredentialHolder(
+                        FIRGoogleAuthProvider.credentialWithIDToken(
+                            data!!.authentication.idToken!!, data.authentication.accessToken
+                        )
+                    )
+                )
+            }
+        }
+        is AuthMethod.Twitter -> CredentialHolder(getTwitterCredential(method, auth))
+        is AuthMethod.Yahoo -> CredentialHolder(getYahooCredential(method, auth))
     }
 
 private fun toFIRCodeSettings(settings: ActionCodeSettings): FIRActionCodeSettings =
@@ -447,19 +676,11 @@ private fun toAuthException(exception: NSError): FirebaseAuthException = Firebas
     }
 )
 
-private fun toCredential(credential: FIRAuthCredential?): AuthCredential? {
-    if (credential == null) return null
-    val provider: AuthProvider = toAuthProvider(credential.provider)
-    return AuthCredentialImpl(credential, provider = provider)
-}
 
-private fun toAuthResult(result: FIRAuthDataResult): AuthResult = AuthResult(
-    if (result.additionalUserInfo != null) AdditionalUserInfo(
-        (result.additionalUserInfo!!.profile ?: emptyMap<String, Any>()) as Map<String, Any>,
-        result.additionalUserInfo!!.providerID,
-        result.additionalUserInfo!!.username,
-        result.additionalUserInfo!!.newUser
-    ) else null, toCredential(result.credential)
+private fun toUserInfo(result: FIRAuthDataResult): AdditionalUserInfo = AdditionalUserInfo(
+    (result.additionalUserInfo!!.profile ?: emptyMap<String, Any>()) as Map<String, Any>,
+    result.additionalUserInfo!!.username,
+    result.additionalUserInfo!!.newUser
 )
 
 private fun toFIRSettings(settings: FirebaseAuth.Config.FirebaseAuthSettings): FIRAuthSettings =
@@ -470,17 +691,12 @@ private fun toFIRSettings(settings: FirebaseAuth.Config.FirebaseAuthSettings): F
 private fun toAuthSettings(settings: FIRAuthSettings): FirebaseAuth.Config.FirebaseAuthSettings =
     FirebaseAuth.Config.FirebaseAuthSettings(settings.appVerificationDisabledForTesting)
 
-private class AuthCredentialImpl(
-    private val androidCredential: FIRAuthCredential? = null,
-    val oAuthProvider: FIROAuthProvider? = null,
-    override val provider: AuthProvider,
-) : AuthCredential {
-    val credential
-        get() = androidCredential
-            ?: error("Auth operation not supported for AuthMethod.${provider.name}")
-}
+private class CredentialHolder(
+    val credential: FIRAuthCredential? = null, val method: AuthMethod? = null
+)
 
 internal actual val firebaseAuthInstance: FirebaseAuth by lazy { FirebaseAuthImpl(FIRAuth.auth()) }
+
 @Suppress("TYPE_MISMATCH")
 internal actual fun getAuthInstance(app: FirebaseApp): FirebaseAuth =
     FirebaseAuthImpl(FIRAuth.authWithApp(app.app))

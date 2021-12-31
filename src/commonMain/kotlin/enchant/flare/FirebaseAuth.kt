@@ -8,19 +8,15 @@ interface FirebaseAuth {
     suspend fun checkActionCode(code: String): ActionCodeInfo
 
     suspend fun confirmPasswordReset(code: String, newPassword: String)
-    suspend fun createUserWithEmailAndPassword(email: String, password: String): AuthResult
     suspend fun fetchSignInProvidersForEmail(email: String): List<AuthProvider>
     val currentUser: FirebaseUser?
 
     suspend fun sendPasswordResetEmail(email: String, settings: ActionCodeSettings? = null)
     suspend fun sendSignInLinkToEmail(email: String, settings: ActionCodeSettings)
-    suspend fun signInAnonymously(): AuthResult
-    suspend fun signIn(method: AuthMethod): AuthResult
-    suspend fun signIn(credential: AuthCredential): AuthResult
-    suspend fun signInWithCustomToken(token: String): AuthResult
-    suspend fun signInWithEmailAndPassword(email: String, password: String): AuthResult
-    suspend fun signInWithEmailLink(email: String, link: String)
+    suspend fun signIn(method: AuthMethod): AdditionalUserInfo
     suspend fun verifyPasswordResetCode(code: String): String
+
+    fun isSignInWithEmailLink(link: String): Boolean
     fun signOut()
 
     val config: Config
@@ -83,42 +79,56 @@ sealed class ActionCodeInfo {
 }
 
 sealed class AuthMethod {
-    data class AppleAndroid(
-        val params: Map<String, String> = emptyMap(),
-        val scopes: List<String> = emptyList()
+
+    data class Apple(
+        val ui: Any,
+        val requestEmail: Boolean = false,
+        val requestName: Boolean = false,
+        val locale: String?
     ) : AuthMethod()
 
-    data class AppleiOS(val idToken: String, val rawNonce: String): AuthMethod()
+    object Annonymous : AuthMethod()
 
     data class EmailPassword(val email: String, val password: String) : AuthMethod()
-    data class EmailLink(val email: String, val emailLink: String, val isLink: Boolean = false) :
+    data class EmailLink(val email: String, val link: String, val isLink: Boolean = false) :
         AuthMethod()
 
-    data class Facebook(val accessToken: String) : AuthMethod()
-    data class Github(val token: String) : AuthMethod()
-    data class Google(val idToken: String, val accessToken: String) : AuthMethod()
+    data class Custom(val token: String): AuthMethod()
 
-    data class Phone(val verificationId: String, val smsCode: String) : AuthMethod()
-    data class PlayGames(val serverAuthCode: String) : AuthMethod()
-    data class Twitter(val token: String, val secret: String) : AuthMethod()
+    data class GitHub(
+        val activity: Any? = null,
+        val loginHint: String? = null,
+        val allowSignUp: Boolean = false,
+        val requestEmail: Boolean = false
+    ) : AuthMethod()
+
+    data class Google(
+        val ui: Any,
+        val webClientId: String,
+        val requestEmail: Boolean = false,
+        val requestProfile: Boolean = false
+    ) : AuthMethod()
+
+    data class Twitter(val activity: Any? = null, val locale: String? = null) : AuthMethod()
     data class Yahoo(
-        val params: Map<String, String> = emptyMap(),
-        val scopes: List<String> = emptyList()
+        val activity: Any? = null,
+        val requestProfile: Boolean = false,
+        val requestEmail: Boolean = false,
+        val language: String? = null,
+        val prompt: String? = null,
+        val maxAge: Int? = null
     ) : AuthMethod()
 }
 
-enum class AuthProvider { Apple, EmailPassword, EmailLink, Facebook, GitHub, Google, Phone, PlayGames, Twitter, Yahoo }
+enum class AuthProvider { Apple, EmailPassword, EmailLink, GitHub, Google, Twitter, Yahoo }
 
 internal fun toAuthProvider(method: String): AuthProvider =
     when (method) {
         "apple.com" -> AuthProvider.Apple
         "password" -> AuthProvider.EmailPassword
         "emailLink" -> AuthProvider.EmailLink
-        "facebook.com" -> AuthProvider.Facebook
         "github.com" -> AuthProvider.GitHub
         "google.com" -> AuthProvider.Google
-        "phone" -> AuthProvider.Phone
-        "playgames.google.com" -> AuthProvider.PlayGames
         "twitter.com" -> AuthProvider.Twitter
         "yahoo.com" -> AuthProvider.Yahoo
         else -> error("Unknown auth method encountered: $method")
@@ -129,27 +139,14 @@ internal fun toAuthString(provider: AuthProvider): String =
         AuthProvider.Apple -> "apple.com"
         AuthProvider.EmailPassword -> "password"
         AuthProvider.EmailLink -> "emailLink"
-        AuthProvider.Facebook -> "facebook.com"
         AuthProvider.GitHub -> "github.com"
         AuthProvider.Google -> "google.com"
-        AuthProvider.Phone -> "phone"
-        AuthProvider.PlayGames -> "playgames.google.com"
         AuthProvider.Twitter -> "twitter.com"
         AuthProvider.Yahoo -> "yahoo.com"
     }
 
-interface AuthCredential {
-    val provider: AuthProvider
-}
-
-data class AuthResult(
-    val additionUserInfo: AdditionalUserInfo?,
-    val credential: AuthCredential?
-)
-
 data class AdditionalUserInfo(
-    val profile: Map<String, Any>,
-    val providerId: String?,
+    val profile: Map<String, Any>?,
     val username: String?,
     val isNewUser: Boolean,
 )
@@ -168,14 +165,12 @@ interface FirebaseUser {
     val tenantId: String?
     val uid: String
     val isAnonymous: Boolean
-    suspend fun linkWithMethod(method: AuthMethod): AuthResult
-    suspend fun linkWithMethod(credential: AuthCredential): AuthResult
-    suspend fun reauthenticate(method: AuthMethod): AuthResult
-    suspend fun reauthenticate(credential: AuthCredential): AuthResult
+    suspend fun linkMethod(method: AuthMethod): AdditionalUserInfo
+    suspend fun reauthenticate(method: AuthMethod): AdditionalUserInfo
     suspend fun reload()
     suspend fun sendEmailVerification(settings: ActionCodeSettings? = null)
 
-    suspend fun unlink(provider: AuthProvider)
+    suspend fun unlinkMethod(provider: AuthProvider)
     suspend fun updateEmail(email: String)
     suspend fun updatePassword(password: String)
     suspend fun updateProfile(displayName: String? = null, photoUrl: String? = null)
