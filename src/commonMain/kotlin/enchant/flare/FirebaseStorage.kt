@@ -1,24 +1,15 @@
 package enchant.flare
 
-interface File {
-
-}
-
 interface FirebaseStorage {
 
     suspend fun deleteFile(path: String)
-    fun getActiveDownloadPaths(path: String): List<String>
-    fun getActiveUploadPaths(path: String): List<String>
 
-    suspend fun getBytes(
-        path: String, maxDownloadSize: Long,
-        onProgress: ((bytesDownloaded: Long, totalBytes: Long) -> Unit)? = null
-    ): Array<Byte>
+    suspend fun getBytes(path: String, maxDownloadSize: Long): Array<Byte>
 
     suspend fun getDownloadUrl(path: String): String
     suspend fun getFile(
-        path: String, onProgress: ((bytesDownloaded: Long, totalBytes: Long) -> Unit)? = null
-    ): File
+        path: String, filePath: String, onProgress: ((bytesDownloaded: Long, totalBytes: Long) -> Unit)? = null
+    )
 
     suspend fun getMetadata(path: String): StorageMetadata
     suspend fun list(path: String, maxResults: Int? = null, pageToken: String? = null): ListResult
@@ -43,30 +34,34 @@ interface FirebaseStorage {
         val bucket: String
         fun useEmulator(host: String, port: Int)
     }
+
+    companion object {
+        val instance: FirebaseStorage = firebaseStorageInstance
+        fun getInstance(app: FirebaseApp) = getStorageInstance(app)
+    }
 }
 
 data class StorageMetadata(
-    val bucket: String,
-    val cacheControl: String,
-    val contentDisposition: String,
-    val contentEncoding: String,
-    val contentLanguage: String,
-    val contentType: String,
+    val bucket: String?,
+    val cacheControl: String?,
+    val contentDisposition: String?,
+    val contentEncoding: String?,
+    val contentLanguage: String?,
+    val contentType: String?,
     val creationTime: Long,
-    val customMetadataKeys: Set<String>,
-    val generation: String,
-    val md5Hash: String,
-    val metadataGeneration: String,
-    val name: String,
+    val generation: Long,
+    val md5Hash: String?,
+    val metadataGeneration: Long,
+    val name: String?,
     val path: String,
     val size: Long,
     val updatedTime: Long,
     val customMetadata: Map<String, String>
 )
 
-data class ListResult (
+data class ListResult(
     val items: List<String>,
-    val pageToken: String
+    val pageToken: String?
 )
 
 class StorageException(val code: Code) : Exception("Cloud storage operation failed with code: $code") {
@@ -83,3 +78,6 @@ class StorageException(val code: Code) : Exception("Cloud storage operation fail
         Unknown
     }
 }
+
+internal expect val firebaseStorageInstance: FirebaseStorage
+internal expect fun getStorageInstance(app: FirebaseApp): FirebaseStorage
