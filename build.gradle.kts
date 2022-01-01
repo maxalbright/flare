@@ -20,8 +20,8 @@ kotlin {
     cocoapods {
         ios.deploymentTarget = "13.5"
 
-        summary = "CocoaPods test library"
-        homepage = "https://github.com/JetBrains/kotlin"
+        summary = "Flare"
+        homepage = "https://github.com/terathought/flare"
 
         pod("FirebaseAnalytics", "8.10.0")
         pod("FirebaseAuth", "8.10.0")
