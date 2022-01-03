@@ -58,19 +58,25 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         }
 
 
-    override suspend fun setDocument(path: String, data: Map<String, Any>, merge: Merge): Unit =
-        suspendCancellableCoroutine { c ->
-            val task = if (merge == Merge.None) firestore.document(path).set(data)
-            else firestore.document(path).set(data, toSetOptions(merge)!!)
-            task.addOnCompleteListener {
-                if (it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
-            }
+    override suspend fun setDocument(
+        path: String,
+        data: Map<String, Any>,
+        merge: Merge,
+        changes: (Changes.() -> Unit)?
+    ): Unit = suspendCancellableCoroutine { c ->
+        val d = if(changes == null) data else ChangesImpl(data).apply(changes).newData
+        val task = if (merge == Merge.None) firestore.document(path).set(d)
+        else firestore.document(path).set(data, toSetOptions(merge)!!)
+        task.addOnCompleteListener {
+            if (it.isSuccessful) c.resume(Unit)
+            else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
         }
+    }
 
-    override suspend fun updateDocument(path: String, data: Map<String, Any>): Unit =
+    override suspend fun updateDocument(path: String, data: Map<String, Any>, changes: (Changes.() -> Unit)?): Unit =
         suspendCancellableCoroutine { c ->
-            firestore.document(path).update(data).addOnCompleteListener {
+            val d = if(changes == null) data else ChangesImpl(data).apply(changes).newData
+            firestore.document(path).update(d).addOnCompleteListener {
                 if (it.isSuccessful) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
             }
@@ -185,12 +191,13 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         override fun useEmulator(host: String, port: Int): Unit = firestore.useEmulator(host, port)
 
-        override suspend fun loadBundle(data: Array<Byte>): Unit = suspendCancellableCoroutine { c ->
-            firestore.loadBundle(data.toByteArray()).addOnCompleteListener {
-                if (it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+        override suspend fun loadBundle(data: Array<Byte>): Unit =
+            suspendCancellableCoroutine { c ->
+                firestore.loadBundle(data.toByteArray()).addOnCompleteListener {
+                    if (it.isSuccessful) c.resume(Unit)
+                    else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                }
             }
-        }
 
         override suspend fun snapshotsInSync(action: () -> Unit): Unit =
             suspendCancellableCoroutine { c ->
@@ -278,12 +285,8 @@ private class QueryImpl(var query: AndroidQuery) : Query {
         Direction.Descending -> AndroidDirection.DESCENDING
     }
 
-    override fun limit(limit: Long) {
-        query = query.limit(limit)
-    }
-
-    override fun limitToLast(limit: Long) {
-        query = query.limitToLast(limit)
+    override fun limit(limit: Long, toLast: Boolean) {
+        query = if(toLast) query.limitToLast(limit) else query.limit(limit)
     }
 
     override fun orderBy(field: String, direction: Direction) {
@@ -363,6 +366,35 @@ private class TransactionImpl(
     override fun delete(path: String) {
         transaction = transaction.delete(firestore.document(path))
     }
+}
+
+private class ChangesImpl(data: Map<String, Any>): Changes {
+    val newData: MutableMap<String, Any> = data.toMutableMap()
+
+    override fun arrayRemove(field: String, vararg elements: Any) {
+        newData[field] = FieldValue.arrayRemove(elements)
+    }
+
+    override fun arrayUnion(field: String, vararg elements: Any) {
+        newData[field] = FieldValue.arrayUnion(elements)
+    }
+
+    override fun delete(field: String) {
+        newData[field] = FieldValue.delete()
+    }
+
+    override fun increment(field: String, amount: Double) {
+        newData[field] = FieldValue.increment(amount)
+    }
+
+    override fun increment(field: String, amount: Long) {
+        newData[field] = FieldValue.increment(amount)
+    }
+
+    override fun serverTimestamp(field: String) {
+        newData[field] = FieldValue.serverTimestamp()
+    }
+
 }
 
 private fun toSetOptions(merge: Merge): SetOptions? = when (merge) {

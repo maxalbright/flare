@@ -3,14 +3,12 @@ package enchant.flare
 import kotlinx.coroutines.flow.Flow
 
 interface Document : Map<String, Any> {
-
     //TODO: Ensure data types are converted to the same Kotlin type (blob, boolean, date, double, geopoint, string, timestamp)
     val id: String
     val metadata: Map<FirestoreMetadata, Any>
 }
 
 interface Collection : List<Document> {
-
     val id: String
     val documents: List<Document>
     val metadata: Map<FirestoreMetadata, Any>
@@ -20,8 +18,15 @@ interface FirebaseFirestore {
 
     fun getDocument(path: String, metadataChanges: Boolean = false): Flow<Document>
     suspend fun getDocumentOnce(path: String, source: Source = Source.Default): Document
-    suspend fun setDocument(path: String, data: Map<String, Any>, options: Merge = Merge.None)
-    suspend fun updateDocument(path: String, data: Map<String, Any>)
+
+    suspend fun setDocument(
+        path: String,
+        data: Map<String, Any>,
+        merge: Merge = Merge.None,
+        changes: (Changes.() -> Unit)? = null
+    )
+
+    suspend fun updateDocument(path: String, data: Map<String, Any>, changes: (Changes.() -> Unit)?)
     suspend fun deleteDocument(path: String)
 
     fun getCollection(
@@ -74,8 +79,7 @@ enum class Direction { Ascending, Descending }
 
 interface Query {
 
-    fun limit(limit: Long)
-    fun limitToLast(limit: Long)
+    fun limit(limit: Long, toLast: Boolean = false)
 
     fun orderBy(field: String, direction: Direction = Direction.Ascending)
     fun whereArrayContains(field: String, vararg value: Any)
@@ -91,18 +95,6 @@ interface Query {
 
     fun whereLessThan(field: String, value: Any)
     fun whereLessThanOrEqualTo(field: String, value: Any)
-}
-
-sealed class Field {
-
-    class ArrayRemove(elements: Any) : Field()
-    class ArrayUnion(elements: Any) : Field()
-    object Delete
-    class Increment(amount: Long) : Field() {
-        constructor(amount: Double) : this(amount.toLong())
-    }
-
-    object ServerTimestamp
 }
 
 interface WriteBatch {
@@ -194,6 +186,15 @@ abstract class ListCollection(override val documents: List<Document>) : Collecti
 
     override fun subList(fromIndex: Int, toIndex: Int): List<Document> =
         documents.subList(fromIndex, toIndex)
+}
+
+interface Changes {
+    fun arrayRemove(field: String, vararg elements: Any)
+    fun arrayUnion(field: String, vararg elements: Any)
+    fun delete(field: String)
+    fun increment(field: String, amount: Double)
+    fun increment(field: String, amount: Long)
+    fun serverTimestamp(field: String)
 }
 
 internal expect val firestoreInstance: FirebaseFirestore

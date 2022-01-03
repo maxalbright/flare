@@ -55,22 +55,29 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         }
 
 
-    override suspend fun setDocument(path: String, data: Map<String, Any>, merge: Merge): Unit =
+    override suspend fun setDocument(
+        path: String,
+        data: Map<String, Any>,
+        merge: Merge,
+        changes: (Changes.() -> Unit)?
+    ): Unit =
         suspendCancellableCoroutine { c ->
+            val d = if(changes == null) data else ChangesImpl(data).apply(changes).newData
             val completion: (NSError?) -> Unit = { error ->
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
             val document = firestore.documentWithPath(path)
             if (merge is Merge.Fields)
-                document.setData(data as Map<Any?, *>, merge.fields.asList(), completion)
-            else document.setData(data as Map<Any?, *>, merge == Merge.All, completion)
+                document.setData(d as Map<Any?, *>, merge.fields.asList(), completion)
+            else document.setData(d as Map<Any?, *>, merge == Merge.All, completion)
         }
 
-    override suspend fun updateDocument(path: String, data: Map<String, Any>): Unit =
+    override suspend fun updateDocument(path: String, data: Map<String, Any>, changes: (Changes.() -> Unit)?): Unit =
         suspendCancellableCoroutine { c ->
+            val d = if(changes == null) data else ChangesImpl(data).apply(changes).newData
             val document = firestore.documentWithPath(path)
-            document.updateData(data as Map<Any?, *>) { error ->
+            document.updateData(d as Map<Any?, *>) { error ->
                 if (error == null) c.resume(Unit)
                 else throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
             }
@@ -300,12 +307,8 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
 private class QueryImpl(var query: FIRQuery) : Query {
 
-    override fun limit(limit: Long) {
-        query = query.queryLimitedTo(limit)
-    }
-
-    override fun limitToLast(limit: Long) {
-        query = query.queryLimitedToLast(limit)
+    override fun limit(limit: Long, toLast: Boolean) {
+        query = if(toLast)query.queryLimitedToLast(limit) else query.queryLimitedTo(limit)
     }
 
     override fun orderBy(field: String, direction: Direction) {
@@ -394,6 +397,35 @@ private class TransactionImpl(
     override fun delete(path: String) {
         transaction = transaction.deleteDocument(firestore.documentWithPath(path))
     }
+}
+
+private class ChangesImpl(data: Map<String, Any>): Changes {
+    val newData: MutableMap<String, Any> = data.toMutableMap()
+
+    override fun arrayRemove(field: String, vararg elements: Any) {
+        newData[field] = FIRFieldValue.fieldValueForArrayRemove(elements.toList())
+    }
+
+    override fun arrayUnion(field: String, vararg elements: Any) {
+        newData[field] = FIRFieldValue.fieldValueForArrayUnion(elements.toList())
+    }
+
+    override fun delete(field: String) {
+        newData[field] = FIRFieldValue.fieldValueForDelete()
+    }
+
+    override fun increment(field: String, amount: Double) {
+        newData[field] = FIRFieldValue.fieldValueForDoubleIncrement(amount)
+    }
+
+    override fun increment(field: String, amount: Long) {
+        newData[field] = FIRFieldValue.fieldValueForIntegerIncrement(amount)
+    }
+
+    override fun serverTimestamp(field: String) {
+        newData[field] = FIRFieldValue.fieldValueForServerTimestamp()
+    }
+
 }
 
 internal actual val firestoreInstance: FirebaseFirestore by lazy {
