@@ -5,11 +5,9 @@ import kotlinx.cinterop.allocArrayOf
 import kotlinx.cinterop.memScoped
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
-import objcnames.classes.FIRApp
 import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.dataWithBytes

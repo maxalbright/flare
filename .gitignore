@@ -1,4 +1,4 @@
-*.iml
+**.iml
 **/.gradle
 **local.properties
 **/.idea
@@ -7,7 +7,40 @@
 **/build
 **/captures
 **/.externalNativeBuild
-.cxx
+**.cxx
+**/pubkey
 
-flare.podspec
-kotlin-js-store
+**/xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
+**/DerivedData/
+**/*.moved-aside
+**/*.pbxuser
+**/!default.pbxuser
+**/*.mode1v3
+**/!default.mode1v3
+**/*.mode2v3
+**/!default.mode2v3
+**/*.perspectivev3
+**/!default.perspectivev3
+
+## Xcode Patch
+*.xcodeproj/*
+**/!*.xcodeproj/project.pbxproj
+**/!*.xcodeproj/xcshareddata/
+**/!*.xcodeproj/xcuserdata/
+**/!*.xcworkspace/contents.xcworkspacedata
+**/*.xcworkspace/xcuserdata
+/*.gcno
+**.xcuserdatad
+
+## Pods Patch
+**/Pods/
+
+### Xcode Patch ###
+**/xcshareddata/WorkspaceSettings.xcsettings
+
+**.lock
+**.podspec

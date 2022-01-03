@@ -12,5 +12,6 @@ pluginManagement {
         }
     }
 }
+include(":flare", ":sampleShared", ":sampleIosApp", ":sampleAndroidApp")
 rootProject.name = "flare"
 
