@@ -118,8 +118,8 @@ data class FirebaseFirestoreSettings(
     var loggingEnabled: Boolean = false
 )
 
-class FirebaseFirestoreException(val code: Code) :
-    Exception("Firebase firestore operation failed with code: $code") {
+class FirestoreException(val code: Code, val description: String? = null) :
+    Exception("Firebase firestore operation failed with code ${code.name}: $description") {
 
     enum class Code {
         Aborted,

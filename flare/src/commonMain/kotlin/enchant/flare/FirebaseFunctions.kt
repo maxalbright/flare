@@ -5,8 +5,8 @@ interface FirebaseFunctions {
     fun useEmulator(host: String, port: Int)
 }
 
-class FunctionsException(val code: Code, val description: String?) :
-    Exception("Firebase functions failed with code ${code.name}: $description") {
+class FunctionsException(val code: Code, val description: String? = null) :
+    Exception("Firebase functions operation failed with code ${code.name}: $description") {
 
     enum class Code {
         Aborted,

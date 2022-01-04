@@ -5,7 +5,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSError
 import kotlin.coroutines.resume
 
-private class FirebaseFunctionsImpl(val functions: FIRFunctions) : FirebaseFunctions {
+private class FirebaseFunctionsImpl(private val functions: FIRFunctions) : FirebaseFunctions {
     override suspend fun call(name: String, data: Any?, timeout: Long?): Any? =
         suspendCancellableCoroutine { c ->
             functions.HTTPSCallableWithName(name).callWithObject(data) { data, error ->

@@ -1,14 +1,12 @@
 package enchant.flare
 
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.suspendCancellableCoroutine
-import java.lang.Exception
 import kotlin.coroutines.resume
 import com.google.firebase.functions.FirebaseFunctions as AndroidFunctions
 import com.google.firebase.functions.FirebaseFunctionsException as AndroidException
 import com.google.firebase.functions.FirebaseFunctionsException.Code as AndroidCode
 
-private class FirebaseFunctionsImpl(val functions: AndroidFunctions) : FirebaseFunctions {
+private class FirebaseFunctionsImpl(private val functions: AndroidFunctions) : FirebaseFunctions {
     override suspend fun call(name: String, data: Any?, timeout: Long?): Any? =
         suspendCancellableCoroutine { c ->
             functions.getHttpsCallable(name).call(data).addOnCompleteListener {

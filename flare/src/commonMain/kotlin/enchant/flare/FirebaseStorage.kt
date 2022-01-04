@@ -64,7 +64,8 @@ data class ListResult(
     val pageToken: String?
 )
 
-class StorageException(val code: Code) : Exception("Cloud storage operation failed with code: $code") {
+class StorageException(val code: Code, val description: String? = null) :
+    Exception("Firebase storage operation failed with code ${code.name}: $description") {
 
     enum class Code {
         BucketNotFound,

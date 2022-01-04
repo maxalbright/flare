@@ -6,6 +6,7 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.lang.Exception
 import kotlin.coroutines.resume
 import com.google.firebase.firestore.FirebaseFirestore as AndroidFirestore
 import com.google.firebase.firestore.FirebaseFirestoreException.Code as AndroidCode
@@ -43,7 +44,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
                     when {
                         data != null -> trySendBlocking(DocumentImpl(data))
                         error!!.code == AndroidCode.CANCELLED -> return@addSnapshotListener
-                        else -> throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
+                        else -> firestoreException(error)
                     }
                 }
             awaitClose { registration.remove() }
@@ -53,7 +54,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         suspendCancellableCoroutine { c ->
             firestore.document(path).get(toAndroidSource(source)).addOnCompleteListener {
                 if (it.isSuccessful) c.resume(DocumentImpl(it.result))
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
 
@@ -69,7 +70,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         else firestore.document(path).set(data, toSetOptions(merge)!!)
         task.addOnCompleteListener {
             if (it.isSuccessful) c.resume(Unit)
-            else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+            else firestoreException(it.exception!!)
         }
     }
 
@@ -78,7 +79,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
             val d = if(changes == null) data else ChangesImpl(data).apply(changes).newData
             firestore.document(path).update(d).addOnCompleteListener {
                 if (it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
 
@@ -86,7 +87,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         suspendCancellableCoroutine { c ->
             firestore.document(path).delete().addOnCompleteListener {
                 if (it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
 
@@ -104,7 +105,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
                 data != null ->
                     trySendBlocking(CollectionImpl(data, path.takeLastWhile { it != '/' }))
                 error!!.code == AndroidCode.CANCELLED -> return@addSnapshotListener
-                else -> throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
+                else -> throw FirestoreException(firestoreException(error))
             }
         }
         awaitClose { registration.remove() }
@@ -120,7 +121,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         q.get(toAndroidSource(source)).addOnCompleteListener {
             if (it.isSuccessful)
                 c.resume(CollectionImpl(it.result, path.takeLastWhile { it != '/' }))
-            else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+            else firestoreException(it.exception!!)
         }
     }
 
@@ -132,7 +133,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         var registration: ListenerRegistration? = null
         firestore.getNamedQuery(name).addOnCompleteListener {
-            if (!it.isSuccessful) throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+            if (!it.isSuccessful) firestoreException(it.exception!!)
             val q = QueryImpl(it.result).also { query(it) }.query
 
             registration = q.addSnapshotListener(
@@ -142,7 +143,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
                     data != null ->
                         trySendBlocking(CollectionImpl(data, data.documents[0].reference.parent.id))
                     error!!.code == AndroidCode.CANCELLED -> return@addSnapshotListener
-                    else -> throw FirebaseFirestoreException(toFirestoreExceptionCode(error.code))
+                    else -> firestoreException(error)
                 }
             }
         }
@@ -155,12 +156,12 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         query: Query.() -> Unit
     ): Collection = suspendCancellableCoroutine { c ->
         firestore.getNamedQuery(name).addOnCompleteListener {
-            if (!it.isSuccessful) throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+            if (!it.isSuccessful) firestoreException(it.exception!!)
             val q = QueryImpl(it.result).also { query(it) }.query
             q.get(toAndroidSource(source)).addOnCompleteListener {
                 if (it.isSuccessful)
                     c.resume(CollectionImpl(it.result, it.result.documents[0].reference.parent.id))
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
     }
@@ -169,7 +170,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         suspendCancellableCoroutine { c ->
             firestore.runBatch { batch(WriteBatchImpl(firestore, it)) }.addOnCompleteListener {
                 if (!it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
 
@@ -178,7 +179,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
             firestore.runTransaction { transaction(TransactionImpl(firestore, it)) }
                 .addOnCompleteListener {
                     if (!it.isSuccessful) c.resume(Unit)
-                    else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                    else firestoreException(it.exception!!)
                 }
         }
 
@@ -195,7 +196,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
             suspendCancellableCoroutine { c ->
                 firestore.loadBundle(data.toByteArray()).addOnCompleteListener {
                     if (it.isSuccessful) c.resume(Unit)
-                    else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                    else firestoreException(it.exception!!)
                 }
             }
 
@@ -208,7 +209,7 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
         override suspend fun clearPersistence(): Unit = suspendCancellableCoroutine { c ->
             firestore.clearPersistence().addOnCompleteListener {
                 if (it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
 
@@ -216,44 +217,46 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
             suspendCancellableCoroutine { c ->
                 (if (enabled) firestore.enableNetwork() else firestore.disableNetwork()).addOnCompleteListener {
                     if (it.isSuccessful) c.resume(Unit)
-                    else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                    else firestoreException(it.exception!!)
                 }
             }
 
         override suspend fun terminate(): Unit = suspendCancellableCoroutine { c ->
             firestore.terminate().addOnCompleteListener {
                 if (it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
 
         override suspend fun waitForPendingWrites(): Unit = suspendCancellableCoroutine { c ->
             firestore.waitForPendingWrites().addOnCompleteListener {
                 if (it.isSuccessful) c.resume(Unit)
-                else throw FirebaseFirestoreException(toFirestoreExceptionCode((it.exception as AndroidFirestoreException).code))
+                else firestoreException(it.exception!!)
             }
         }
 
     }
 
-    private fun toFirestoreExceptionCode(code: AndroidCode): FirebaseFirestoreException.Code =
-        when (code) {
-            AndroidCode.INVALID_ARGUMENT -> FirebaseFirestoreException.Code.InvalidArgument
-            AndroidCode.ALREADY_EXISTS -> FirebaseFirestoreException.Code.AlreadyExists
-            AndroidCode.DEADLINE_EXCEEDED -> FirebaseFirestoreException.Code.DeadlineExceeded
-            AndroidCode.NOT_FOUND -> FirebaseFirestoreException.Code.NotFound
-            AndroidCode.PERMISSION_DENIED -> FirebaseFirestoreException.Code.PermissionDenied
-            AndroidCode.RESOURCE_EXHAUSTED -> FirebaseFirestoreException.Code.ResourceExhausted
-            AndroidCode.FAILED_PRECONDITION -> FirebaseFirestoreException.Code.FailedPrecondition
-            AndroidCode.ABORTED -> FirebaseFirestoreException.Code.Aborted
-            AndroidCode.OUT_OF_RANGE -> FirebaseFirestoreException.Code.OutOfRange
-            AndroidCode.UNIMPLEMENTED -> FirebaseFirestoreException.Code.Unimplemented
-            AndroidCode.INTERNAL -> FirebaseFirestoreException.Code.Internal
-            AndroidCode.UNAVAILABLE -> FirebaseFirestoreException.Code.Unavailable
-            AndroidCode.DATA_LOSS -> FirebaseFirestoreException.Code.DataLoss
-            AndroidCode.UNAUTHENTICATED -> FirebaseFirestoreException.Code.Unauthenticated
-            else -> FirebaseFirestoreException.Code.Unknown.also { println("Encountered unknown firestore error code: ${code.name}") }
-        }
+    private fun firestoreException(exception: Exception): FirestoreException.Code {
+        val code = if (exception is AndroidFirestoreException) when (exception.code) {
+            AndroidCode.INVALID_ARGUMENT -> FirestoreException.Code.InvalidArgument
+            AndroidCode.ALREADY_EXISTS -> FirestoreException.Code.AlreadyExists
+            AndroidCode.DEADLINE_EXCEEDED -> FirestoreException.Code.DeadlineExceeded
+            AndroidCode.NOT_FOUND -> FirestoreException.Code.NotFound
+            AndroidCode.PERMISSION_DENIED -> FirestoreException.Code.PermissionDenied
+            AndroidCode.RESOURCE_EXHAUSTED -> FirestoreException.Code.ResourceExhausted
+            AndroidCode.FAILED_PRECONDITION -> FirestoreException.Code.FailedPrecondition
+            AndroidCode.ABORTED -> FirestoreException.Code.Aborted
+            AndroidCode.OUT_OF_RANGE -> FirestoreException.Code.OutOfRange
+            AndroidCode.UNIMPLEMENTED -> FirestoreException.Code.Unimplemented
+            AndroidCode.INTERNAL -> FirestoreException.Code.Internal
+            AndroidCode.UNAVAILABLE -> FirestoreException.Code.Unavailable
+            AndroidCode.DATA_LOSS -> FirestoreException.Code.DataLoss
+            AndroidCode.UNAUTHENTICATED -> FirestoreException.Code.Unauthenticated
+            else -> FirestoreException.Code.Unknown
+        } else FirestoreException.Code.Unknown
+        throw FirestoreException(code, exception.message)
+    }
 
     private fun toAndroidSource(source: Source): AndroidSource = when (source) {
         Source.Default -> AndroidSource.DEFAULT

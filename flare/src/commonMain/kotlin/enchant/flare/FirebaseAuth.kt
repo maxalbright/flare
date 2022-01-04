@@ -43,8 +43,8 @@ interface FirebaseAuth {
     }
 }
 
-class FirebaseAuthException(val code: Code) :
-    Exception("Firebase auth operation failed with code: $code") {
+class AuthException(val code: Code, val description: String? = null) :
+    Exception("Firebase auth operation failed with code ${code.name}: $description") {
 
     enum class Code {
         ActionCode,

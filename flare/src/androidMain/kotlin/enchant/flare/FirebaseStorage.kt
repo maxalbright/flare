@@ -7,7 +7,7 @@ import com.google.firebase.storage.FirebaseStorage as AndroidStorage
 import com.google.firebase.storage.StorageException as AndroidException
 import com.google.firebase.storage.StorageMetadata as AndroidMetadata
 
-class FirebaseStorageImpl(val storage: AndroidStorage) : FirebaseStorage {
+private class FirebaseStorageImpl(private val storage: AndroidStorage) : FirebaseStorage {
 
     override suspend fun deleteFile(path: String): Unit = suspendCancellableCoroutine { c ->
         storage.getReference(path).delete().addOnCompleteListener {
