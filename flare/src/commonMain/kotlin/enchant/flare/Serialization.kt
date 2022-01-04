@@ -36,23 +36,43 @@ suspend inline fun <reified T> FirebaseFirestore.updateDocument(
     return updateDocument(path, encoder.map!!, changes)
 }
 
-enum class SerialType { Input, Output, InputOutput }
+
+suspend inline fun <reified E> FirebaseFunctions.call(
+    name: String,
+    data: E? = null,
+    timeout: Long? = null,
+    inputStrategy: SerializationStrategy<E> = serializer(),
+): Any? {
+    val newData: Any? = if (data != null) {
+        val encoder = FirebaseEncoder()
+        encoder.encodeSerializableValue(inputStrategy, data)
+        encoder.map
+    } else data
+    return call(name, newData, timeout)
+}
 
 suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
     name: String,
     data: E? = null,
     timeout: Long? = null,
-    serial: SerialType,
     inputStrategy: SerializationStrategy<E> = serializer(),
     outputStrategy: DeserializationStrategy<T> = serializer()
-): T {
-    val newData: Any? = if (serial != SerialType.Output && data != null) {
-        val encoder = FirebaseEncoder()
-        encoder.encodeSerializableValue(inputStrategy, data)
-        encoder.map
-    } else data
-    val output = call<T>(name, data, timeout)
-    return if (serial != SerialType.Input) {
+): T? {
+    val output: Any? = call(name, data, timeout, inputStrategy)
+    return if (output != null) {
+        val decoder = FirebaseDecoder(output as Map<String, Any>)
+        decoder.decodeSerializableValue(outputStrategy)
+    } else output
+}
+
+suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
+    name: String,
+    data: Any? = null,
+    timeout: Long? = null,
+    outputStrategy: DeserializationStrategy<T> = serializer()
+): T? {
+    val output: Any? = call(name, data, timeout)
+    return if (output != null) {
         val decoder = FirebaseDecoder(output as Map<String, Any>)
         decoder.decodeSerializableValue(outputStrategy)
     } else output

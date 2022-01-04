@@ -625,14 +625,14 @@ private suspend fun toCredentialHolder(method: AuthMethod, auth: FIRAuth): Crede
 private fun toFIRCodeSettings(settings: ActionCodeSettings): FIRActionCodeSettings =
     FIRActionCodeSettings().apply {
         if (settings.androidConfig != null) setAndroidPackageName(
-            settings.androidConfig.androidPackageName,
-            settings.androidConfig.installIfNotAvailable,
-            settings.androidConfig.minimumVersion
+            settings.androidConfig!!.androidPackageName,
+            settings.androidConfig!!.installIfNotAvailable,
+            settings.androidConfig!!.minimumVersion
         )
         if (settings.dynamicLinkDomain != null) dynamicLinkDomain = settings.dynamicLinkDomain
         handleCodeInApp = settings.handleCodeInApp
-        if (settings.iOSBundleId != null) setIOSBundleID(settings.iOSBundleId)
-        if (settings.url != null) URL = NSURL(string = settings.url)
+        if (settings.iOSBundleId != null) setIOSBundleID(settings.iOSBundleId!!)
+        if (settings.url != null) URL = NSURL(string = settings.url!!)
     }
 
 private fun toAuthException(exception: NSError): FirebaseAuthException = FirebaseAuthException(
