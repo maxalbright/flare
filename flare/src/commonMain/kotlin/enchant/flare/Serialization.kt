@@ -1,5 +1,6 @@
 package enchant.flare
 
+import kotlinx.datetime.Instant
 import kotlinx.serialization.*
 import kotlinx.serialization.descriptors.*
 import kotlinx.serialization.encoding.*
@@ -7,6 +8,8 @@ import kotlinx.serialization.encoding.CompositeDecoder.Companion.DECODE_DONE
 import kotlinx.serialization.encoding.CompositeDecoder.Companion.UNKNOWN_NAME
 import kotlinx.serialization.modules.EmptySerializersModule
 import kotlinx.serialization.modules.SerializersModule
+import kotlin.collections.List
+import kotlin.collections.Map
 
 
 inline fun <reified T> Document.data(strategy: DeserializationStrategy<T> = serializer()): T {
@@ -65,16 +68,32 @@ class FirebaseEncoder(
     override val serializersModule: SerializersModule = EmptySerializersModule
 
     var index = 0
+    var key: String? = null
+
+    var size: Int = 0
+    override fun beginCollection(
+        descriptor: SerialDescriptor,
+        collectionSize: Int
+    ): CompositeEncoder {
+        size = collectionSize
+        return super.beginCollection(descriptor, collectionSize)
+    }
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeEncoder {
         if (this.descriptor == null) {
             map = mutableMapOf()
             return FirebaseEncoder(null, map, descriptor.kind as StructureKind, descriptor)
         }
+        if (this.descriptor.getElementDescriptor(index).serialName == "kotlin.ByteArray") {
+            return BlobEncoder(map!!, this.descriptor.getElementName(index++), size)
+        }
         val output: Any =
             if (descriptor.kind == StructureKind.LIST) mutableListOf<Any>() else mutableMapOf<String, Any>()
         if (kind == StructureKind.LIST) list!! += output
-        else map!![this.descriptor.getElementName(index)] = output
+        else map!![if (key != null) key!!.also { key = null } else this.descriptor.getElementName(
+            index
+        )] = output
+
         index++
         return FirebaseEncoder(
             (if (descriptor.kind == StructureKind.LIST) output else null) as MutableList<Any>?,
@@ -83,6 +102,10 @@ class FirebaseEncoder(
         )
     }
 
+    override fun <T> encodeSerializableValue(serializer: SerializationStrategy<T>, value: T) {
+        if (value is Instant) encodeValue(toDate(value)) else
+            super.encodeSerializableValue(serializer, value)
+    }
 
     override fun encodeByte(value: Byte) = encodeValue(value.toLong())
 
@@ -97,14 +120,71 @@ class FirebaseEncoder(
     override fun encodeShort(value: Short) = encodeValue(value.toLong())
 
     override fun encodeValue(value: Any) {
-        if (kind == StructureKind.LIST) list!! += value else {
+        key = null
+        if (kind == StructureKind.LIST) list!! += value else
             map!![descriptor!!.getElementName(index++)] = value
-        }
     }
 
     override fun encodeNull() {
+        key = null
         index++
     }
+
+    override fun encodeString(value: String) {
+        if (descriptor!!.getElementName(index).toIntOrNull() != null) {
+            key = value
+            index++
+        } else encodeValue(value)
+    }
+}
+
+internal expect fun toBlob(array: ByteArray): Any
+internal expect fun fromBlob(blob: Any): ByteArray
+internal expect fun isBlob(blob: Any?): Boolean
+internal expect fun toDate(instant: Instant): Any
+internal expect fun fromDate(date: Any): Instant
+internal expect fun isDate(date: Any?): Boolean
+
+@OptIn(ExperimentalSerializationApi::class)
+class BlobEncoder(
+    val map: MutableMap<String, Any>,
+    val name: String,
+    size: Int
+) : AbstractEncoder() {
+    private val array = ByteArray(size)
+    var index = 0
+    override val serializersModule: SerializersModule
+        get() = EmptySerializersModule
+
+    override fun encodeByte(value: Byte) {
+        array[index++] = value
+    }
+
+    override fun endStructure(descriptor: SerialDescriptor) {
+        map[name] = toBlob(array)
+    }
+
+}
+
+//Swap decoder with object accessor
+@OptIn(ExperimentalSerializationApi::class)
+class BlobDecoder(
+    blob: Any,
+) : AbstractDecoder() {
+
+    var index = 0
+    val blob: ByteArray = fromBlob(blob)
+    override val serializersModule: SerializersModule = EmptySerializersModule
+
+    @ExperimentalSerializationApi
+    override fun decodeSequentially(): Boolean = true
+
+    override fun decodeCollectionSize(descriptor: SerialDescriptor): Int = blob.size
+
+    override fun decodeElementIndex(descriptor: SerialDescriptor): Int =
+        if (index >= blob.size) DECODE_DONE else index
+
+    override fun decodeByte(): Byte = blob[index++]
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -116,6 +196,8 @@ class FirebaseDecoder(
 ) : AbstractDecoder() {
 
     var index = 0
+    val itr by lazy { map!!.iterator() }
+    var key: String? = null
 
     override val serializersModule: SerializersModule = EmptySerializersModule
 
@@ -126,10 +208,14 @@ class FirebaseDecoder(
         map?.size ?: list!!.size
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
+
+        if (this.descriptor?.getElementDescriptor(index)?.serialName == "kotlin.ByteArray") {
+            return BlobDecoder(map!![this.descriptor.getElementName(index++)]!!)
+        }
         val data: Any =
             if (kind == StructureKind.LIST) list!![index]
             else if (this.descriptor == null) map!!
-            else map!![this.descriptor.getElementName(index)]!!
+            else map!![key ?: this.descriptor.getElementName(index)]!!
         index++
         return FirebaseDecoder(
             (if (descriptor.kind != StructureKind.LIST) data else null) as Map<String, Any>?,
@@ -138,7 +224,6 @@ class FirebaseDecoder(
             descriptor
         )
     }
-
 
     override fun decodeElementIndex(descriptor: SerialDescriptor): Int = when {
         index >= map?.size ?: list!!.size -> DECODE_DONE
@@ -156,26 +241,44 @@ class FirebaseDecoder(
         return s[0]
     }
 
-    override fun decodeEnum(enumDescriptor: SerialDescriptor): Int =
-        ((map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]) as Long).toInt()
+    override fun decodeEnum(enumDescriptor: SerialDescriptor): Int = (decodeValue() as Long).toInt()
 
-    override fun decodeFloat(): Float =
-        ((map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]) as Double).toFloat()
+    override fun decodeFloat(): Float = (decodeValue() as Double).toFloat()
 
-    override fun decodeInt(): Int =
-        ((map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]) as Long).toInt()
+    override fun decodeInt(): Int = (decodeValue() as Long).toInt()
 
-    override fun decodeValue(): Any =
-        (map?.get(descriptor!!.getElementName(index++)) ?: list!![index++])
+    override fun decodeValue(): Any {
+        key = null
+        return map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]
+    }
 
-    override fun decodeShort(): Short =
-        ((map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]) as Long).toShort()
+    override fun decodeShort(): Short = (decodeValue() as Long).toShort()
 
+    override fun decodeString(): String {
+        return if (descriptor?.getElementDescriptor(index)?.serialName == "Instant")
+            fromDate(
+                map?.get(this.descriptor.getElementName(index++)) ?: list!![index++]
+            ).toString()
+        else if (descriptor?.getElementName(index)?.toIntOrNull() != null) {
+            for (entry in itr) {
+                if (entry.value is Map<*, *>) {
+                    key = entry.key
+                    break
+                }
+            }
+            index++
+            key ?: error("Map could not be decoded")
 
-    override fun decodeNotNullMark(): Boolean =
-        map!!.containsKey(descriptor!!.getElementName(index))
+        } else super.decodeString()
+    }
+
+    override fun decodeNotNullMark(): Boolean {
+        key = null
+        return map!!.containsKey(descriptor!!.getElementName(index))
+    }
 
     override fun decodeNull(): Nothing? {
+        key = null
         index++
         return super.decodeNull()
     }

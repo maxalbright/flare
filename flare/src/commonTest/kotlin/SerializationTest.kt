@@ -1,9 +1,11 @@
-import enchant.flare.FirebaseDecoder
-import enchant.flare.FirebaseEncoder
+import enchant.flare.*
+import kotlinx.datetime.Instant
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SerializationTest {
 
@@ -12,35 +14,31 @@ class SerializationTest {
         val encoder = FirebaseEncoder()
         println(encoder)
         encoder.encodeSerializableValue(serializer(), ethan)
-        println(encoder.map)
+        assertEquals(ethanMap, encoder.map!!)
     }
 
     @Test
     fun decode() {
-        val map = mapOf(
-            "name" to "Ethan",
-            "age" to 23L,
-            "height" to mapOf("first" to 5L, "second" to 10L),
-            "favoriteColor" to 0L,
-            "friends" to listOf(
-                mapOf(
-                    "name" to "Vikram",
-                    "age" to 19L,
-                    "height" to mapOf("first" to 5L, "second" to 11L),
-                    "favoriteColor" to 2L,
-                ),
-                mapOf(
-                    "name" to "Jeff",
-                    "age" to 34L,
-                    "height" to mapOf("first" to 6L, "second" to 5L),
-                    "favoriteColor" to 1L,
-                )
-            )
-
-        )
-        val decoder = FirebaseDecoder(map)
+        val decoder = FirebaseDecoder(ethanMap)
         val person: Person = decoder.decodeSerializableValue(serializer())
         assertEquals(ethan, person)
+    }
+
+    @Test
+    fun fullEncode() {
+        val encoder = FirebaseEncoder()
+        encoder.encodeSerializableValue(serializer(), myData)
+        val data = encoder.map!!
+        assertTrue((myDataMap["blob"] as ByteArray).contentEquals(data["blob"] as ByteArray))
+        data["blob"] = myDataMap["blob"]!!
+        assertEquals(myDataMap.toString(), encoder.map!!.toString())
+    }
+
+    @Test
+    fun fullDecode() {
+        val decoder = FirebaseDecoder(myDataMap)
+        val data: MyData = decoder.decodeSerializableValue(serializer())
+        assertEquals(myData.toString(), data.toString())
     }
 }
 
@@ -74,5 +72,78 @@ val ethan = Person(
     height = 5 to 10,
     favoriteColor = Color.Red,
     friends = listOf(vikram, jeff)
+)
+val vikramMap = mapOf(
+    "name" to "Vikram",
+    "age" to 19L,
+    "height" to mapOf("first" to 5L, "second" to 11L),
+    "favoriteColor" to 2L,
+)
+val jeffMap = mapOf(
+    "name" to "Jeff",
+    "age" to 34L,
+    "height" to mapOf("first" to 6L, "second" to 5L),
+    "favoriteColor" to 1L,
+)
+val ethanMap = mapOf(
+    "name" to "Ethan",
+    "age" to 23L,
+    "height" to mapOf("first" to 5L, "second" to 10L),
+    "favoriteColor" to 0L,
+    "friends" to listOf(
+        vikramMap,
+        jeffMap
+    )
+)
+val blob = byteArrayOf(1,127,123,34,6,4,12)
+val long: Long = 13L
+val myData = MyData(
+    array = arrayOf(1, 5, 2),
+    blob = blob,
+    list = listOf(ethan, vikram, jeff),
+    boolean = true,
+    date = Instant.fromEpochMilliseconds(100),
+    byte = long.toByte(),
+    short = long.toShort(),
+    int = long.toInt(),
+    long = long,
+    float = 4f,
+    double = 4.0,
+    map = mapOf("Vikram" to vikram, "Jeff" to jeff),
+    nullable = null,
+    string = "Yay"
+)
 
+@Serializable
+data class MyData(
+    val array: Array<Int>,
+    val blob: ByteArray,
+    val list: List<Person>,
+    val boolean: Boolean,
+    val date: Instant,
+    val byte: Byte,
+    val short: Short,
+    val int: Int,
+    val long: Long,
+    val float: Float,
+    val double: Double,
+    val map: Map<String, Person>,
+    val nullable: String?,
+    val string: String,
+)
+
+val myDataMap = mapOf(
+    "array" to listOf(1L, 5L, 2L),
+    "blob" to toBlob(blob),
+    "list" to listOf(ethanMap, vikramMap, jeffMap),
+    "boolean" to true,
+    "date" to toDate(Instant.fromEpochMilliseconds(100)),
+    "byte" to 13L,
+    "short" to 13L,
+    "int" to 13L,
+    "long" to 13L,
+    "float" to 4.0,
+    "double" to 4.0,
+    "map" to mapOf("Vikram" to vikramMap, "Jeff" to jeffMap),
+    "string" to "Yay"
 )
