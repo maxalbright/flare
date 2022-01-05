@@ -29,24 +29,23 @@ actual class FirebaseApp(val app: FIRApp) {
 private fun toFirebaseOptions(options: FIROptions): FirebaseOptions =
     FirebaseOptions(
         apiKey = options.APIKey!!,
-        applicationId = options.googleAppID,
+        appId = options.googleAppID,
         databaseUrl = options.databaseURL,
         gcmSenderId = options.GCMSenderID,
         projectId = options.projectID,
-        gaTrackingId = options.trackingID,
+        measurementId = options.trackingID,
         storageBucket = options.storageBucket,
         bundleId = options.bundleID,
         clientId = options.clientID
     )
 
 private fun toFIROptions(options: FirebaseOptions): FIROptions =
-    FIROptions().apply {
+    FIROptions(options.appId, options.gcmSenderId!!).apply {
         setAPIKey(options.apiKey)
-        setGoogleAppID(options.applicationId)
+        setGoogleAppID(options.appId)
         setDatabaseURL(options.databaseUrl)
         setProjectID(options.projectId)
-        setTrackingID(options.gaTrackingId)
-        if (options.gcmSenderId != null) setGCMSenderID(options.gcmSenderId!!)
+        setTrackingID(options.measurementId)
         setStorageBucket(options.gcmSenderId)
         setBundleID(bundleID)
         setClientID(clientID)

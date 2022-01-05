@@ -2,11 +2,11 @@ package enchant.flare
 
 data class FirebaseOptions(
     val apiKey: String,
-    val applicationId: String,
+    val appId: String,
     val databaseUrl: String? = null,
     val gcmSenderId: String? = null,
     val projectId: String? = null,
-    val gaTrackingId: String? = null,
+    val measurementId: String? = null,
     val storageBucket: String? = null,
 
     //JS

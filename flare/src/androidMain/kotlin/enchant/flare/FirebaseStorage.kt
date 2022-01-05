@@ -74,14 +74,14 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
 
     override suspend fun putBytes(
         path: String,
-        bytes: Array<Byte>,
+        bytes: ByteArray,
         metadata: StorageMetadata?,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)?
     ): StorageMetadata = suspendCancellableCoroutine { c ->
 
         val task = if (metadata == null) storage.getReference(path)
-            .putBytes(bytes.toByteArray()) else storage.getReference(path)
-            .putBytes(bytes.toByteArray(), toAndroidMetadata(metadata))
+            .putBytes(bytes) else storage.getReference(path)
+            .putBytes(bytes, toAndroidMetadata(metadata))
 
         task.addOnCompleteListener {
             if (it.isSuccessful) c.resume(toStorageMetadata(it.result!!.metadata))

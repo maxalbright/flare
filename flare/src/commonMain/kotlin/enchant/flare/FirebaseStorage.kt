@@ -14,7 +14,7 @@ interface FirebaseStorage {
     suspend fun getMetadata(path: String): StorageMetadata
     suspend fun list(path: String, maxResults: Int? = null, pageToken: String? = null): ListResult
     suspend fun putBytes(
-        path: String, bytes: Array<Byte>, metadata: StorageMetadata? = null,
+        path: String, bytes: ByteArray, metadata: StorageMetadata? = null,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)? = null
     ): StorageMetadata
 

@@ -49,7 +49,12 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         suspendCancellableCoroutine { c ->
             firestore.documentWithPath(path)
                 .getDocumentWithSource(toFIRSource(source)) { data, error ->
-                    if (data != null) c.resume(DocumentImpl(data))
+                    if (data?.data() != null && data.data()!!.isNotEmpty()) c.resume(
+                        DocumentImpl(data)
+                    ) else if (data?.data()?.isEmpty() != false) throw FirestoreException(
+                        FirestoreException.Code.NotFound,
+                        "Returned document at path [$path] had no data"
+                    )
                     else firestoreException(error!!)
                 }
         }
@@ -57,12 +62,12 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
     override suspend fun setDocument(
         path: String,
-        data: Map<String, Any>,
+        map: Map<String, Any>,
         merge: Merge,
         changes: (Changes.() -> Unit)?
     ): Unit =
         suspendCancellableCoroutine { c ->
-            val d = if (changes == null) data else ChangesImpl(data).apply(changes).newData
+            val d = if (changes == null) map else ChangesImpl(map).apply(changes).newData
             val completion: (NSError?) -> Unit = { error ->
                 if (error == null) c.resume(Unit)
                 else firestoreException(error)
@@ -75,11 +80,11 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
     override suspend fun updateDocument(
         path: String,
-        data: Map<String, Any>,
+        map: Map<String, Any>,
         changes: (Changes.() -> Unit)?
     ): Unit =
         suspendCancellableCoroutine { c ->
-            val d = if (changes == null) data else ChangesImpl(data).apply(changes).newData
+            val d = if (changes == null) map else ChangesImpl(map).apply(changes).newData
             val document = firestore.documentWithPath(path)
             document.updateData(d as Map<Any?, *>) { error ->
                 if (error == null) c.resume(Unit)
@@ -99,10 +104,10 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
     override fun getCollection(
         path: String,
         metadataChanges: Boolean,
-        query: Query.() -> Unit
+        query: (Query.() -> Unit)?
     ): Flow<Collection> = callbackFlow {
         val collection = firestore.collectionWithPath(path)
-        val q = QueryImpl(collection).also { query(it) }.query
+        val q = QueryImpl(collection).also { if (query != null) query(it) }.query
         val registration =
             q.addSnapshotListenerWithIncludeMetadataChanges(metadataChanges) { data, error ->
                 when {
@@ -118,10 +123,10 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
     override suspend fun getCollectionOnce(
         path: String,
         source: Source,
-        query: Query.() -> Unit
+        query: (Query.() -> Unit)?
     ): Collection = suspendCancellableCoroutine { c ->
         val collection = firestore.collectionWithPath(path)
-        val q = QueryImpl(collection).also { query(it) }.query
+        val q = QueryImpl(collection).also { if (query != null) query(it) }.query
         q.getDocumentsWithSource(toFIRSource(source)) { data, error ->
             if (data != null) c.resume(CollectionImpl(data, path.takeLastWhile { it != '/' }))
             else firestoreException(error!!)
@@ -403,27 +408,40 @@ private class TransactionImpl(
 private class ChangesImpl(data: Map<String, Any>) : Changes {
     val newData: MutableMap<String, Any> = data.toMutableMap()
 
+    fun check(field: String) {
+        if (newData[field] is FIRFieldValue) throw FirestoreException(
+            FirestoreException.Code.InvalidArgument,
+            "Field [$field] attempted to apply multiple changes, which is not permitted"
+        )
+    }
+
     override fun arrayRemove(field: String, vararg elements: Any) {
+        check(field)
         newData[field] = FIRFieldValue.fieldValueForArrayRemove(elements.toList())
     }
 
     override fun arrayUnion(field: String, vararg elements: Any) {
+        check(field)
         newData[field] = FIRFieldValue.fieldValueForArrayUnion(elements.toList())
     }
 
     override fun delete(field: String) {
+        check(field)
         newData[field] = FIRFieldValue.fieldValueForDelete()
     }
 
     override fun increment(field: String, amount: Double) {
+        check(field)
         newData[field] = FIRFieldValue.fieldValueForDoubleIncrement(amount)
     }
 
     override fun increment(field: String, amount: Long) {
+        check(field)
         newData[field] = FIRFieldValue.fieldValueForIntegerIncrement(amount)
     }
 
     override fun serverTimestamp(field: String) {
+        check(field)
         newData[field] = FIRFieldValue.fieldValueForServerTimestamp()
     }
 

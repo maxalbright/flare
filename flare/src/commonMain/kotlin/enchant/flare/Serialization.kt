@@ -17,6 +17,9 @@ inline fun <reified T> Document.data(strategy: DeserializationStrategy<T> = seri
     return decoder.decodeSerializableValue(strategy)
 }
 
+inline fun <reified T> Collection.data(strategy: DeserializationStrategy<T> = serializer()): List<T> =
+    documents.map { it.data(strategy) }
+
 suspend inline fun <reified T> FirebaseFirestore.setDocument(
     path: String, data: T, options: Merge = Merge.None,
     strategy: SerializationStrategy<T> = serializer(),

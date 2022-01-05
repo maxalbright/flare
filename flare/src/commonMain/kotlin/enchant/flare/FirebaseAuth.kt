@@ -1,6 +1,7 @@
 package enchant.flare
 
 import kotlinx.coroutines.flow.Flow
+import enchant.flare.AuthProvider.*
 
 interface FirebaseAuth {
 
@@ -78,38 +79,37 @@ sealed class ActionCodeInfo {
     data class VerifyEmail(val email: String) : ActionCodeInfo()
 }
 
-sealed class AuthMethod {
+sealed class AuthMethod(internal val provider: AuthProvider) {
 
     data class Apple(
         val ui: Any,
         val requestEmail: Boolean = false,
         val requestName: Boolean = false,
-        val locale: String?
-    ) : AuthMethod()
+        val locale: String? = null
+    ) : AuthMethod(Apple)
 
-    object Annonymous : AuthMethod()
+    object Anonymous : AuthMethod(AuthProvider.Anonymous)
 
-    data class EmailPassword(val email: String, val password: String) : AuthMethod()
-    data class EmailLink(val email: String, val link: String, val isLink: Boolean = false) :
-        AuthMethod()
+    data class EmailPassword(val email: String, val password: String) : AuthMethod(EmailPassword)
+    data class EmailLink(val email: String, val link: String) : AuthMethod(EmailLink)
 
-    data class Custom(val token: String): AuthMethod()
+    data class Custom(val token: String) : AuthMethod(Custom)
 
     data class GitHub(
         val activity: Any? = null,
         val loginHint: String? = null,
         val allowSignUp: Boolean = false,
         val requestEmail: Boolean = false
-    ) : AuthMethod()
+    ) : AuthMethod(GitHub)
 
     data class Google(
         val ui: Any,
         val webClientId: String,
         val requestEmail: Boolean = false,
         val requestProfile: Boolean = false
-    ) : AuthMethod()
+    ) : AuthMethod(Google)
 
-    data class Twitter(val activity: Any? = null, val locale: String? = null) : AuthMethod()
+    data class Twitter(val activity: Any? = null, val locale: String? = null) : AuthMethod(Twitter)
     data class Yahoo(
         val activity: Any? = null,
         val requestProfile: Boolean = false,
@@ -117,32 +117,34 @@ sealed class AuthMethod {
         val language: String? = null,
         val prompt: String? = null,
         val maxAge: Int? = null
-    ) : AuthMethod()
+    ) : AuthMethod(Yahoo)
 }
 
-enum class AuthProvider { Apple, EmailPassword, EmailLink, GitHub, Google, Twitter, Yahoo }
+enum class AuthProvider { Anonymous, Apple, Custom, EmailPassword, EmailLink, GitHub, Google, Twitter, Yahoo }
 
 internal fun toAuthProvider(method: String): AuthProvider =
     when (method) {
-        "apple.com" -> AuthProvider.Apple
-        "password" -> AuthProvider.EmailPassword
-        "emailLink" -> AuthProvider.EmailLink
-        "github.com" -> AuthProvider.GitHub
-        "google.com" -> AuthProvider.Google
-        "twitter.com" -> AuthProvider.Twitter
-        "yahoo.com" -> AuthProvider.Yahoo
+        "apple.com" -> Apple
+        "password" -> EmailPassword
+        "emailLink" -> EmailLink
+        "github.com" -> GitHub
+        "google.com" -> Google
+        "twitter.com" -> Twitter
+        "yahoo.com" -> Yahoo
         else -> error("Unknown auth method encountered: $method")
     }
 
 internal fun toAuthString(provider: AuthProvider): String =
     when (provider) {
-        AuthProvider.Apple -> "apple.com"
-        AuthProvider.EmailPassword -> "password"
-        AuthProvider.EmailLink -> "emailLink"
-        AuthProvider.GitHub -> "github.com"
-        AuthProvider.Google -> "google.com"
-        AuthProvider.Twitter -> "twitter.com"
-        AuthProvider.Yahoo -> "yahoo.com"
+        Anonymous -> "anonymous"
+        Apple -> "apple.com"
+        Custom -> "custom"
+        EmailPassword -> "password"
+        EmailLink -> "emailLink"
+        GitHub -> "github.com"
+        Google -> "google.com"
+        Twitter -> "twitter.com"
+        Yahoo -> "yahoo.com"
     }
 
 data class AdditionalUserInfo(

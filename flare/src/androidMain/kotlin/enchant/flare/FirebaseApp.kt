@@ -34,21 +34,21 @@ actual class FirebaseApp(val app: AndroidFirebaseApp) {
 private fun toFirebaseOptions(options: AndroidFirebaseOptions): FirebaseOptions =
     FirebaseOptions(
         apiKey = options.apiKey,
-        applicationId = options.applicationId,
+        appId = options.applicationId,
         databaseUrl = options.databaseUrl,
         gcmSenderId = options.gcmSenderId,
         projectId = options.projectId,
-        gaTrackingId = options.gaTrackingId,
+        measurementId = options.gaTrackingId,
         storageBucket = options.storageBucket,
     )
 
 private fun toAndroidOptions(options: FirebaseOptions): AndroidFirebaseOptions =
     AndroidFirebaseOptions.Builder().apply {
         setApiKey(options.apiKey)
-        setApplicationId(options.applicationId)
+        setApplicationId(options.appId)
         setDatabaseUrl(options.databaseUrl)
         setProjectId(options.projectId)
-        setGaTrackingId(options.gaTrackingId)
+        setGaTrackingId(options.measurementId)
         setGcmSenderId(options.gcmSenderId)
         setStorageBucket(options.gcmSenderId)
     }.build()

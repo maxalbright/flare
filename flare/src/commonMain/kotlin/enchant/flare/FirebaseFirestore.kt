@@ -21,20 +21,25 @@ interface FirebaseFirestore {
 
     suspend fun setDocument(
         path: String,
-        data: Map<String, Any>,
+        map: Map<String, Any>,
         merge: Merge = Merge.None,
         changes: (Changes.() -> Unit)? = null
     )
 
-    suspend fun updateDocument(path: String, data: Map<String, Any>, changes: (Changes.() -> Unit)?)
+    suspend fun updateDocument(
+        path: String,
+        map: Map<String, Any>,
+        changes: (Changes.() -> Unit)? = null
+    )
+
     suspend fun deleteDocument(path: String)
 
     fun getCollection(
-        path: String, metadataChanges: Boolean = false, query: Query.() -> Unit
+        path: String, metadataChanges: Boolean = false, query: (Query.() -> Unit)? = null
     ): Flow<Collection>
 
     suspend fun getCollectionOnce(
-        path: String, source: Source = Source.Default, query: Query.() -> Unit
+        path: String, source: Source = Source.Default, query: (Query.() -> Unit)? = null
     ): Collection
 
     fun getNamedQuery(name: String, metadataChanges: Boolean = false, query: Query.() -> Unit)
@@ -137,6 +142,13 @@ class FirestoreException(val code: Code, val description: String? = null) :
         Unavailable,
         Unimplemented,
         Unknown
+    }
+
+    companion object {
+
+        internal fun throwCode(code: Code, description: String? = null) {
+            throw FirestoreException(code, description)
+        }
     }
 }
 

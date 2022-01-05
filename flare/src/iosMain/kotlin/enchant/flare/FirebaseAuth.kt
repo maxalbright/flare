@@ -313,7 +313,7 @@ private enum class AuthAction { SignIn, Reauthenticate, Link }
 
 private suspend fun getAltResult(method: AuthMethod, auth: FIRAuth, action: AuthAction)
         : FIRAuthDataResult = when (method) {
-    AuthMethod.Annonymous -> getAnnonymousResult(auth, action)
+    AuthMethod.Anonymous -> getAnnonymousResult(auth, action)
     is AuthMethod.Custom -> getCustomResult(method, auth, action)
     is AuthMethod.EmailLink -> getEmailLinkResult(method, auth, action)
     is AuthMethod.EmailPassword -> getEmailPasswordResult(method, auth, action)
@@ -597,7 +597,7 @@ private class AppleDelegate(val ui: UIViewController, val onComplete: (ASAuthori
 private suspend fun toCredentialHolder(method: AuthMethod, auth: FIRAuth): CredentialHolder =
     when (method) {
         is AuthMethod.Apple -> CredentialHolder(getAppleCredential(method))
-        AuthMethod.Annonymous -> CredentialHolder(method = method)
+        AuthMethod.Anonymous -> CredentialHolder(method = method)
         is AuthMethod.Custom -> CredentialHolder(method = method)
         is AuthMethod.EmailLink -> CredentialHolder(method = method)
         is AuthMethod.EmailPassword -> CredentialHolder(method = method)

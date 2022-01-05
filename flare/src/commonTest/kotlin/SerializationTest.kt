@@ -12,7 +12,6 @@ class SerializationTest {
     @Test
     fun encode() {
         val encoder = FirebaseEncoder()
-        println(encoder)
         encoder.encodeSerializableValue(serializer(), ethan)
         assertEquals(ethanMap, encoder.map!!)
     }
@@ -29,9 +28,11 @@ class SerializationTest {
         val encoder = FirebaseEncoder()
         encoder.encodeSerializableValue(serializer(), myData)
         val data = encoder.map!!
-        assertTrue((myDataMap["blob"] as ByteArray).contentEquals(data["blob"] as ByteArray))
-        data["blob"] = myDataMap["blob"]!!
-        assertEquals(myDataMap.toString(), encoder.map!!.toString())
+        if(myDataMap["blob"] is ByteArray) {
+            assertTrue((myDataMap["blob"] as ByteArray).contentEquals(data["blob"] as ByteArray))
+            data["blob"] = myDataMap["blob"]!!
+        }
+        assertEquals(myDataMap, encoder.map!!)
     }
 
     @Test
@@ -100,9 +101,9 @@ val long: Long = 13L
 val myData = MyData(
     array = arrayOf(1, 5, 2),
     blob = blob,
-    list = listOf(ethan, vikram, jeff),
+    list = setOf(ethan, vikram, jeff),
     boolean = true,
-    date = Instant.fromEpochMilliseconds(100),
+    date = Instant.fromEpochMilliseconds(1504645379673),
     byte = long.toByte(),
     short = long.toShort(),
     int = long.toInt(),
@@ -118,7 +119,7 @@ val myData = MyData(
 data class MyData(
     val array: Array<Int>,
     val blob: ByteArray,
-    val list: List<Person>,
+    val list: Set<Person>,
     val boolean: Boolean,
     val date: Instant,
     val byte: Byte,
@@ -137,7 +138,7 @@ val myDataMap = mapOf(
     "blob" to toBlob(blob),
     "list" to listOf(ethanMap, vikramMap, jeffMap),
     "boolean" to true,
-    "date" to toDate(Instant.fromEpochMilliseconds(100)),
+    "date" to toDate(Instant.fromEpochMilliseconds(1504645379673)),
     "byte" to 13L,
     "short" to 13L,
     "int" to 13L,

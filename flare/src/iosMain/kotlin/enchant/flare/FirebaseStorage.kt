@@ -84,7 +84,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
 
     override suspend fun putBytes(
         path: String,
-        bytes: Array<Byte>,
+        bytes: ByteArray,
         metadata: StorageMetadata?,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)?
     ): StorageMetadata = suspendCancellableCoroutine { c ->

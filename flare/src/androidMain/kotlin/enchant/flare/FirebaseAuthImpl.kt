@@ -306,7 +306,7 @@ private const val RC_SIGN_IN = 420
 
 private suspend fun toCredentialHolder(method: AuthMethod): CredentialHolder =
     when (method) {
-        AuthMethod.Annonymous -> CredentialHolder(method = method)
+        AuthMethod.Anonymous -> CredentialHolder(method = method)
         is AuthMethod.Apple -> CredentialHolder(method = method)
         is AuthMethod.Custom -> CredentialHolder(method = method)
         is AuthMethod.EmailLink -> CredentialHolder(method = method)
@@ -346,7 +346,7 @@ private suspend fun getAltResult(
 ): AuthResult =
     when (method) {
         is AuthMethod.Apple -> getAppleResult(method, auth, action)
-        is AuthMethod.Annonymous -> getAnnonymousResult(auth, action)
+        is AuthMethod.Anonymous -> getAnnonymousResult(auth, action)
         is AuthMethod.Custom -> getCustomResult(method, auth, action)
         is AuthMethod.EmailLink -> getEmailLinkResult(method, auth, action)
         is AuthMethod.EmailPassword -> getEmailPasswordResult(method, auth, action)

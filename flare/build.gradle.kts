@@ -63,10 +63,16 @@ kotlin {
             }
         }
 
-        val androidAndroidTestRelease by getting
+        val androidAndroidTest by getting {
+            dependencies {
+                implementation("androidx.test:core:1.4.0")
+                implementation("androidx.test.ext:junit:1.1.3")
+                implementation("androidx.test:runner:1.4.0")
+            }
+        }
 
         val androidTest by getting {
-            dependsOn(androidAndroidTestRelease)
+            dependsOn(androidAndroidTest)
         }
 
         val iosMain by getting
@@ -87,11 +93,18 @@ android {
     defaultConfig {
         minSdk = 24
         targetSdk = 31
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+    sourceSets {
+        getByName("androidTest"){
+            java.srcDir(file("src/androidAndroidTest/kotlin"))
+        }
+    }
+
 }
 
 allprojects {
