@@ -12,6 +12,7 @@ pluginManagement {
         }
     }
 }
+includeBuild("convention-plugins")
 include(":flare", ":sampleShared", ":sampleIosApp", ":sampleAndroidApp")
 rootProject.name = "flare"
 
