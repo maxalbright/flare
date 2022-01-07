@@ -2,20 +2,9 @@ import enchant.flare.*
 import kotlinx.coroutines.test.runTest
 import kotlin.test.*
 
-class AuthTest {
-    val useLocal = false
+class AuthTest: FlareTest() {
     val auth: FirebaseAuth by lazy {
-        if (useLocal) LocalAuth()
-        else {
-            if (FirebaseApp.getApps(context).isEmpty()) {
-
-                //FirebaseApp.initialize(
-                   // context, null, FirebaseOptions(
-
-                   // ))
-            }
-            FirebaseAuth.instance
-        }
+        if (useLocal) LocalAuth() else FirebaseAuth.instance
     }
 
     @Test

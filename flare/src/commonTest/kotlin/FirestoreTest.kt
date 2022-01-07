@@ -5,22 +5,11 @@ import kotlinx.serialization.Serializable
 import kotlin.random.Random
 import kotlin.test.*
 
-class FirestoreTest {
+class FirestoreTest : FlareTest() {
 
-    val useLocal = false
-    val firestore: FirebaseFirestore by lazy {
-        if (useLocal) LocalFirestore()
-        else {
-            if (FirebaseApp.getApps(context).isEmpty()) {
-                //FirebaseApp.initialize(
-                    //context, null, FirebaseOptions(
-
-                    //))
-            }
-            FirebaseFirestore.instance
-        }
+    val firestore by lazy {
+        if (useLocal) LocalFirestore() else FirebaseFirestore.instance
     }
-    val testId: String = Random.nextInt().toString()
 
     @Test
     fun setGetOnce() = runTest {
