@@ -1,10 +1,10 @@
 import enchant.flare.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.Serializable
 import kotlin.random.Random
 import kotlin.test.*
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class FirestoreTest : FlareTest() {
 
     val firestore by lazy {
