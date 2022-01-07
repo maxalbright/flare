@@ -1,6 +1,4 @@
-import enchant.flare.FirebaseApp
-import enchant.flare.FirebaseFirestore
-import enchant.flare.FirebaseOptions
+import enchant.flare.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
 import kotlin.coroutines.CoroutineContext
@@ -15,7 +13,7 @@ open class FlareTest {
 
     public fun runTest(
         context: CoroutineContext = EmptyCoroutineContext,
-        dispatchTimeoutMs: Long = 8000L,
+        dispatchTimeoutMs: Long = 60000L,
         testBody: suspend TestScope.() -> Unit
     ): TestResult { kotlinx.coroutines.test.runTest(context, dispatchTimeoutMs, testBody) }
 
@@ -28,7 +26,6 @@ open class FlareTest {
                     ?: error("Need to specify [options] in FlareConfig.kt files for running production tests")
             )
         }
-        FirebaseFirestore.instance
     }
 }
 /** Included Firebase options for running tests in production, specify in iosTest/kotlin/FlareConfig.kt

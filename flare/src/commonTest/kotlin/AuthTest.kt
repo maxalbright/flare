@@ -12,7 +12,7 @@ class AuthTest: FlareTest() {
     fun signInWithEmail() = runTest {
         val info = auth.signIn(AuthMethod.EmailPassword("$testId@hi.com", "mypassword"))
         assertTrue(info.isNewUser)
-        assertEquals("ethan@hi.com", auth.currentUser?.email)
+        assertEquals("$testId@hi.com", auth.currentUser?.email)
     }
 
     @Test
