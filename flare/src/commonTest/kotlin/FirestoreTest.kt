@@ -13,16 +13,16 @@ class FirestoreTest : FlareTest() {
 
     @Test
     fun setGetOnce() = runTest {
-        firestore.setDocument("test/$testId", ethan)
-        val data: Dog = firestore.getDocumentOnce("test/$testId").data()
+        firestore.setDocument("test/$testId/setGetOnce/ethan", ethan)
+        val data: Dog = firestore.getDocumentOnce("test/$testId/setGetOnce/ethan").data()
 
         assertEquals(ethan, data)
     }
 
     @Test
     fun setGetOnceAllTypes() = runTest {
-        firestore.setDocument("test/$testId", myData)
-        val data: MyData = firestore.getDocumentOnce("test/$testId").data()
+        firestore.setDocument("test/$testId/getSetAll/myData", myData)
+        val data: MyData = firestore.getDocumentOnce("test/$testId/getSetAll/myData").data()
 
         println(data)
         println(myData)
@@ -35,19 +35,19 @@ class FirestoreTest : FlareTest() {
 
     @Test
     fun getSetMultiple() = runBlocking {
-        firestore.setDocument("test/megan", megan)
+        firestore.setDocument("test/$testId/getSetMultiple/megan", megan)
         var updates = 0
         val job = launch {
-            firestore.getDocument("test/megan").collect {
+            firestore.getDocument("test/$testId/getSetMultiple/megan").collect {
                 updates++
                 val dog: Dog = it.data()
                 assertEquals(dog.name, "Megan")
             }
         }
-        firestore.setDocument("test/megan", megan)
+        firestore.setDocument("test/$testId/getSetMultiple/megan", megan)
         delay(5)
         assertEquals(1, updates)
-        firestore.setDocument("test/megan", megan.copy(age = 3))
+        firestore.setDocument("test/$testId/getSetMultiple/megan", megan.copy(age = 3))
         delay(5)
         assertEquals(2, updates)
         job.cancel()
@@ -55,14 +55,14 @@ class FirestoreTest : FlareTest() {
 
     @Test
     fun update(): Unit = runBlocking {
-        firestore.setDocument("test/megan", megan)
-        firestore.updateDocument("test/megan", mapOf("age" to 5L))
-        val age = firestore.getDocumentOnce("test/megan").data<Dog>().age
+        firestore.setDocument("test/$testId/update/megan", megan)
+        firestore.updateDocument("test/$testId/update/megan", mapOf("age" to 5L))
+        val age = firestore.getDocumentOnce("test/$testId/update/megan").data<Dog>().age
         assertEquals(5, age)
         delay(500)
         try {
             println("update1")
-            firestore.updateDocument("test/invalid", map = mapOf<String, Any>())
+            firestore.updateDocument("test/$testId/update/invalid", map = mapOf<String, Any>())
             fail()
         } catch (t: FirestoreException) {
         }
@@ -70,11 +70,11 @@ class FirestoreTest : FlareTest() {
 
     @Test
     fun delete(): Unit = runBlocking {
-        firestore.setDocument("test/megan", megan)
-        firestore.deleteDocument("test/megan")
+        firestore.setDocument("test/$testId/delete/megan", megan)
+        firestore.deleteDocument("test/$testId/delete/megan")
         delay(500)
         try {
-            firestore.getDocumentOnce("test/megan")
+            firestore.getDocumentOnce("test/$testId/delete/megan")
             fail()
         } catch (t: FirestoreException) {
         }
@@ -83,9 +83,9 @@ class FirestoreTest : FlareTest() {
     @Test
     fun getCollectionOnce() = runTest {
         listOf(hailey, michael, jerry).forEach {
-            firestore.setDocument("test/dogDoc/dogs/${it.name}", it)
+            firestore.setDocument("test/$testId/dogs/${it.name}", it)
         }
-        val dogs: List<Dog> = firestore.getCollectionOnce("test/dogDoc/dogs").data()
+        val dogs: List<Dog> = firestore.getCollectionOnce("test/$testId/dogs").data()
         listOf(hailey, michael, jerry).forEach {
             assertContains(dogs, it)
         }
@@ -95,7 +95,7 @@ class FirestoreTest : FlareTest() {
     fun getCollection() = runTest {
         var updates = 0
         val job = launch {
-            firestore.getCollection("test/dogDocs/dogs").collect {
+            firestore.getCollection("test/${testId}/dogs").collect {
                 updates++
                 val dogs: List<Dog> = it.data()
                 assertEquals(updates, dogs.size)
@@ -103,11 +103,11 @@ class FirestoreTest : FlareTest() {
 
             }
         }
-        firestore.setDocument("test/dogDocs/dogs/Hailey", hailey.copy(age = 2))
+        firestore.setDocument("test/$testId/dogs/Hailey", hailey.copy(age = Random.nextInt()))
         delay(100)
-        firestore.setDocument("test/dogDocs/dogs/Michael", michael.copy(age = 8))
+        firestore.setDocument("test/$testId/dogs/Michael", michael.copy(age = Random.nextInt()))
         delay(100)
-        firestore.setDocument("test/dogDocs/dogs/Jerry", jerry.copy(age = 4))
+        firestore.setDocument("test/$testId/dogs/Jerry", jerry.copy(age = Random.nextInt()))
         delay(100)
         assertEquals(3, updates)
         job.cancel()
@@ -116,7 +116,7 @@ class FirestoreTest : FlareTest() {
     @Test
     fun doesThrow(): Unit = runBlocking {
         try {
-            firestore.deleteDocument("test/blankk")
+            firestore.deleteDocument("test/${testId}/blankk/hi")
         } catch (e: Exception) {
         }
     }
