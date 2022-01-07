@@ -15,7 +15,9 @@ private class FirebaseFunctionsImpl(private val functions: AndroidFunctions) : F
             }
         }
 
-    override fun useEmulator(host: String, port: Int): Unit = functions.useEmulator(host, port)
+    override val config = object : FirebaseFunctions.Config {
+        override fun useEmulator(host: String, port: Int): Unit = functions.useEmulator(host, port)
+    }
 
     private fun functionsException(exception: Exception): Nothing {
         val code: FunctionsException.Code =

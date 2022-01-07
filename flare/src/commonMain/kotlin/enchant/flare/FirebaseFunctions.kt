@@ -2,7 +2,16 @@ package enchant.flare
 
 interface FirebaseFunctions {
     suspend fun call(name: String, data: Any? = null, timeout: Long? = null): Any?
-    fun useEmulator(host: String, port: Int)
+
+    interface Config {
+        fun useEmulator(host: String, port: Int)
+    }
+    val config: Config
+
+    companion object {
+        val instance: FirebaseFunctions = firebaseFunctionsInstance
+        fun getInstance(app: FirebaseApp) = getFunctionsInstance(app)
+    }
 }
 
 class FunctionsException(val code: Code, val description: String? = null) :
@@ -24,11 +33,6 @@ class FunctionsException(val code: Code, val description: String? = null) :
         Unavailable,
         Unimplemented,
         Unknown
-    }
-
-    companion object {
-        val instance: FirebaseFunctions = firebaseFunctionsInstance
-        fun getInstance(app: FirebaseApp) = getFunctionsInstance(app)
     }
 }
 internal expect val firebaseFunctionsInstance: FirebaseFunctions
