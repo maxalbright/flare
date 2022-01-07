@@ -1,12 +1,14 @@
 import enchant.flare.FirebaseApp
 import enchant.flare.FirebaseFirestore
 import enchant.flare.FirebaseOptions
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.random.Random
 import kotlin.test.BeforeTest
 
+@OptIn(ExperimentalCoroutinesApi::class)
 open class FlareTest {
     val useLocal = false //Whether local firebase classes should be used instead of production
     protected val testId: String = Random.nextInt().toString()
