@@ -10,23 +10,24 @@ import platform.Foundation.NSData
 import platform.Foundation.NSDate
 import platform.Foundation.dataWithBytes
 import platform.Foundation.getBytes
-import kotlin.coroutines.resume
 
 internal actual fun toBlob(array: ByteArray): Any {
-    var nsData: NSData? = null
+    var nsData: NSData = NSData.new()!!
     memScoped {
         val p = allocArrayOf(array)
         nsData = NSData.dataWithBytes(p, array.size.toULong())
     }
-    return nsData!!
+    return nsData
 }
 internal actual fun fromBlob(blob: Any): ByteArray {
+    var bytes: ByteArray = ByteArray(0)
     memScoped {
-        val nsData = (blob as NSData).bytes
-        val p = StableRef.create(1)
-        data.getBytes(p.asCPointer())
-        c.resume(p.get().toTypedArray())
+        val nsData = (blob as NSData)
+        val p = StableRef.create(ByteArray(nsData.length.toInt()))
+        nsData.getBytes(p.asCPointer())
+        bytes = p.get()
     }
+    return bytes
 }
 internal actual fun isBlob(blob: Any?): Boolean = blob is NSData
 internal actual fun toDate(instant: Instant): Any = instant.toNSDate()
