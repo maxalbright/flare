@@ -14,6 +14,11 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+        }
+    }
     kotlinOptions {
         jvmTarget = "1.8"
     }

@@ -2,9 +2,10 @@ import SwiftUI
 import sampleShared
 
 struct ContentView: View {
+	let greet = Greeting().greeting()
 
 	var body: some View {
-        Text("Sample")
+		Text(greet)
 	}
 }
 
