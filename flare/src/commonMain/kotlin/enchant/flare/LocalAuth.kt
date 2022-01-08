@@ -92,6 +92,7 @@ class LocalAuth : FirebaseAuth {
                 AuthException.Code.InvalidUser,
                 "User with id [${getId(method)}] could not be deleted because they do not exist"
             )
+            users[method.provider]!!.remove(getId(method))
         }
 
         override val displayName: String?

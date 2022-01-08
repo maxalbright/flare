@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Clock
 import enchant.flare.LocalFieldValue.*
 import enchant.flare.QueryStep.*
+import kotlinx.coroutines.flow.drop
 
 class LocalFirestore : FirebaseFirestore {
 
@@ -45,7 +46,7 @@ class LocalFirestore : FirebaseFirestore {
     ) : ListCollection(documents)
 
 
-    private fun getDocumentNode(path: String, error: Boolean = true): DocumentNode? {
+    private fun getDocumentNode(path: String, error: Boolean = false): DocumentNode? {
         var node: Any? = null
         val ids = path.split("/")
         if (ids.size % 2 == 1) throw FirestoreException(
@@ -65,7 +66,7 @@ class LocalFirestore : FirebaseFirestore {
         return node as DocumentNode
     }
 
-    private fun getCollectionNode(path: String): CollectionNode {
+    private fun getCollectionNode(path: String, error: Boolean = false): CollectionNode? {
         var node: Any? = null
         val ids = path.split("/")
         if (ids.size % 2 == 0) throw FirestoreException(
@@ -78,9 +79,9 @@ class LocalFirestore : FirebaseFirestore {
                 is CollectionNode -> (node as CollectionNode).documents[id]
                 else -> error("Unexpected state")
             }
-            node ?: throw FirestoreException(NotFound, "Collection not found at path $path")
+            if(error) node ?: throw FirestoreException(NotFound, "Collection not found at path $path")
         }
-        return node as CollectionNode
+        return node as? CollectionNode
     }
 
     private fun createDocument(path: String): DocumentNode {
@@ -157,7 +158,7 @@ class LocalFirestore : FirebaseFirestore {
      * @param source Has no effect
      */
     override suspend fun getDocumentOnce(path: String, source: Source): Document {
-        val node = getDocumentNode(path)!!
+        val node = getDocumentNode(path, true)!!
         return DocumentImpl(node.data.toMap(), node.id)
     }
 
@@ -203,9 +204,9 @@ class LocalFirestore : FirebaseFirestore {
     }
 
     override suspend fun deleteDocument(path: String) {
-        val node = getDocumentNode(path, true)!!
-        node.parent.documents.remove(node.id)
-        node.parent.update()
+        val node = getDocumentNode(path)
+        node?.parent?.documents?.remove(node.id)
+        node?.parent?.update()
     }
 
     override fun getCollection(
@@ -213,14 +214,14 @@ class LocalFirestore : FirebaseFirestore {
         metadataChanges: Boolean,
         query: (Query.() -> Unit)?
     ): Flow<Collection> {
-        val node = getCollectionNode(path)
+        val node = getCollectionNode(path) ?: createDocument("$path/_tmp").parent.also { it.documents.remove("_tmp")}
         val localQuery = LocalQuery()
         if (query != null) localQuery.query()
         return node.updates.map {
             CollectionImpl(localQuery.apply(node.documents.map {
                 DocumentImpl(it.value.data, it.key)
             }), node.id)
-        }
+        }.drop(1)
     }
 
     override suspend fun getCollectionOnce(
@@ -228,7 +229,7 @@ class LocalFirestore : FirebaseFirestore {
         source: Source,
         query: (Query.() -> Unit)?
     ): Collection {
-        val node = getCollectionNode(path)
+        val node = getCollectionNode(path) ?: createDocument("$path/_tmp").parent.also { it.documents.remove("_tmp")}
         val localQuery = LocalQuery()
         if (query != null) localQuery.query()
         return CollectionImpl(localQuery.apply(node.documents.map {

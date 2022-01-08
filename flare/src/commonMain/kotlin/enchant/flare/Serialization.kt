@@ -13,7 +13,8 @@ import kotlin.collections.Map
 
 
 inline fun <reified T> Document.data(strategy: DeserializationStrategy<T> = serializer()): T {
-    val decoder = FirebaseDecoder(this)
+    val document: Document = this
+    val decoder = FirebaseDecoder(document)
     return decoder.decodeSerializableValue(strategy)
 }
 

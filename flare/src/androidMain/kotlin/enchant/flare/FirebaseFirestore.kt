@@ -106,7 +106,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
     ): T {
 
         val result = suspendCancellableCoroutine(block)
-        println("finished with $result")
         return result.getOrThrow()
 //        return if (result is Outcome.Fail) throw FirestoreException(
 //            result.code, result.message

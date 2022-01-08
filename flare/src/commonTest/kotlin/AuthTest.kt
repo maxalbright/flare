@@ -1,6 +1,11 @@
 import enchant.flare.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlin.test.*
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class AuthTest: FlareTest() {

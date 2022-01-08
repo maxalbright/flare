@@ -1,3 +1,4 @@
+val kotlin_version: String by extra
 plugins {
     kotlin("multiplatform")
     kotlin("native.cocoapods")
@@ -16,7 +17,11 @@ repositories {
 
 kotlin {
     android()
-    ios()
+    ios {
+        binaries {
+            executable()
+        }
+    }
     iosSimulatorArm64()
     cocoapods {
         ios.deploymentTarget = "13.5"
@@ -31,6 +36,11 @@ kotlin {
         pod("FirebaseFunctions", "8.10.0")
         pod("FirebaseStorage", "8.10.0")
         pod("GoogleSignIn", "6.1.0")
+
+        framework {
+            transitiveExport = true
+        }
+
     }
 
 
@@ -38,9 +48,11 @@ kotlin {
 
         val commonMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.3.2")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.3.1")
+                implementation(kotlin("test"))
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0")
             }
         }
         val commonTest by getting {
@@ -77,16 +89,8 @@ kotlin {
 
         val iosMain by getting
         val iosTest by getting
-
-        val iosX64Test by getting {
-            dependsOn(iosTest)
-        }
-
         val iosSimulatorArm64Main by getting {
             dependsOn(iosMain)
-        }
-        val iosSimulatorArm64Test by getting {
-            dependsOn(iosTest)
         }
     }
 }
@@ -95,7 +99,7 @@ android {
     compileSdk = 31
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     defaultConfig {
-        minSdk = 24
+        minSdk = 21
         targetSdk = 31
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

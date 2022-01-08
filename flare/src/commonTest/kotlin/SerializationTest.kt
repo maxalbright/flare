@@ -1,6 +1,5 @@
 import enchant.flare.*
 import kotlinx.datetime.Instant
-import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
 import kotlin.test.Test
@@ -28,9 +27,9 @@ class SerializationTest {
         val encoder = FirebaseEncoder()
         encoder.encodeSerializableValue(serializer(), myData)
         val data = encoder.map!!
-        if(myDataMap["blob"] is ByteArray) {
-            assertTrue((myDataMap["blob"] as ByteArray).contentEquals(data["blob"] as ByteArray))
-            data["blob"] = myDataMap["blob"]!!
+        if(myDataMap["enchant.flare.test.getBlob"] is ByteArray) {
+            assertTrue((myDataMap["enchant.flare.test.getBlob"] as ByteArray).contentEquals(data["enchant.flare.test.getBlob"] as ByteArray))
+            data["enchant.flare.test.getBlob"] = myDataMap["enchant.flare.test.getBlob"]!!
         }
         assertEquals(myDataMap, encoder.map!!)
     }
@@ -135,14 +134,14 @@ data class MyData(
 
 val myDataMap = mapOf(
     "array" to listOf(1L, 5L, 2L),
-    "blob" to toBlob(blob),
+    "enchant.flare.test.getBlob" to toBlob(blob),
     "list" to listOf(ethanMap, vikramMap, jeffMap),
     "boolean" to true,
     "date" to toDate(Instant.fromEpochMilliseconds(1504645379673)),
     "byte" to 13L,
     "short" to 13L,
     "int" to 13L,
-    "long" to 13L,
+    "enchant.flare.test.getLong" to 13L,
     "float" to 4.0,
     "double" to 4.0,
     "map" to mapOf("Vikram" to vikramMap, "Jeff" to jeffMap),

@@ -1,6 +1,8 @@
-import enchant.flare.*
+import enchant.flare.FirebaseApp
+import enchant.flare.FirebaseOptions
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.TestResult
+import kotlinx.coroutines.test.TestScope
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.random.Random
@@ -11,14 +13,7 @@ open class FlareTest {
     val useLocal = false //Whether local firebase classes should be used instead of production
     protected val testId: String = Random.nextInt().toString()
 
-    public fun runTest(
-        context: CoroutineContext = EmptyCoroutineContext,
-        dispatchTimeoutMs: Long = 60000L,
-        testBody: suspend TestScope.() -> Unit
-    ): TestResult { kotlinx.coroutines.test.runTest(context, dispatchTimeoutMs, testBody) }
-
-    @BeforeTest
-    fun initializeFirebase() {
+    init {
         if (!useLocal && FirebaseApp.getApps(context).isEmpty()) {
             FirebaseApp.initialize(
                 context, null,

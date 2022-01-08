@@ -44,5 +44,5 @@
 
 **.lock
 **.podspec
-flare/src/androidAndroidTest/kotlin/FlareConfig.kt
-flare/src/iosTest/kotlin/FlareConfig.kt
+
+**FlareConfig.kt

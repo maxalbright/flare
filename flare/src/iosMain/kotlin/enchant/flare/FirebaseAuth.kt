@@ -4,11 +4,14 @@ import cocoapods.FirebaseAuth.*
 import cocoapods.GoogleSignIn.GIDConfiguration
 import cocoapods.GoogleSignIn.GIDSignIn
 import kotlinx.cinterop.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import objcnames.classes.Protocol
 import platform.AuthenticationServices.*
 import platform.CoreCrypto.CC_SHA256
@@ -21,14 +24,18 @@ import platform.UIKit.UIViewController
 import platform.UIKit.window
 import platform.darwin.NSObject
 import platform.darwin.NSUInteger
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 
-private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
+private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth, CoroutineScope {
+
     override suspend fun applyActionCode(code: String): Unit = suspendCancellableCoroutine { c ->
         auth.applyActionCode(code) { error ->
             if (error == null) c.resume(Unit)
-            else authException(error)
+            else c.resumeWithException(authException(error))
         }
     }
 
@@ -36,7 +43,7 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             auth.checkActionCode(code) { data, error ->
                 if (data != null) c.resume(toActionCodeInfo(data))
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
 
@@ -44,7 +51,7 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             auth.confirmPasswordResetWithCode(code, newPassword) { error ->
                 if (error == null) c.resume(Unit)
-                else authException(error)
+                else c.resumeWithException(authException(error))
             }
         }
 
@@ -53,7 +60,7 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
             auth.fetchSignInMethodsForEmail(email) { data, error ->
                 if (data != null) c.resume(data?.map { toAuthProvider(it as String) }
                     ?: emptyList())
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
 
@@ -69,7 +76,7 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             val completion: (NSError?) -> Unit = { error ->
                 if (error == null) c.resume(Unit)
-                else authException(error)
+                else c.resumeWithException(authException(error))
             }
             if (settings == null) auth.sendPasswordResetWithEmail(email, completion) else
                 auth.sendPasswordResetWithEmail(email, toFIRCodeSettings(settings), completion)
@@ -79,7 +86,7 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             auth.sendSignInLinkToEmail(email, toFIRCodeSettings(settings)) { error ->
                 if (error == null) c.resume(Unit)
-                else authException(error)
+                else c.resumeWithException(authException(error))
             }
         }
 
@@ -90,7 +97,7 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
         else suspendCancellableCoroutine { c ->
             auth.signInWithCredential(credential.credential!!) { data, error ->
                 if (data != null) c.resume(toUserInfo(data))
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
     }
@@ -99,7 +106,7 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
         suspendCancellableCoroutine { c ->
             auth.verifyPasswordResetCode(code) { data, error ->
                 if (data != null) c.resume(data)
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
 
@@ -163,13 +170,16 @@ private class FirebaseAuthImpl(private val auth: FIRAuth) : FirebaseAuth {
             FIRActionCodeOperationEmailLink -> ActionCodeInfo.SignInWithEmailLink()
             else -> error("Unknown action code operation encountered: $result")
         }
+
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Background
 }
 
 private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseUser {
     override suspend fun delete(): Unit = suspendCancellableCoroutine { c ->
         user.deleteWithCompletion { error ->
             if (error == null) c.resume(Unit)
-            else authException(error)
+            else c.resumeWithException(authException(error))
         }
     }
 
@@ -180,7 +190,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
         suspendCancellableCoroutine { c ->
             user.getIDTokenResultForcingRefresh(forceRefresh) { data, error ->
                 if (data != null) c.resume(toTokenResult(data))
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
 
@@ -213,7 +223,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
         else suspendCancellableCoroutine { c ->
             user.linkWithCredential(credential.credential) { data, error ->
                 if (data != null) c.resume(toUserInfo(data))
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
     }
@@ -225,7 +235,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
         else suspendCancellableCoroutine { c ->
             user.reauthenticateWithCredential(credential.credential) { data, error ->
                 if (data != null) c.resume(toUserInfo(data))
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
     }
@@ -233,14 +243,14 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
     override suspend fun reload(): Unit = suspendCancellableCoroutine { c ->
         user.reloadWithCompletion { error ->
             if (error == null) c.resume(Unit)
-            else authException(error)
+            else c.resumeWithException(authException(error))
         }
     }
 
     override suspend fun sendEmailVerification(settings: ActionCodeSettings?): Unit =
         suspendCancellableCoroutine { c ->
             val completion: (NSError?) -> Unit = { error ->
-                if (error == null) c.resume(Unit) else authException(error)
+                if (error == null) c.resume(Unit) else c.resumeWithException(authException(error))
             }
             if (settings == null) user.sendEmailVerificationWithCompletion(completion)
             else user.sendEmailVerificationWithActionCodeSettings(
@@ -252,14 +262,14 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
         suspendCancellableCoroutine { c ->
             user.unlinkFromProvider(toAuthString(provider)) { data, error ->
                 if (data != null) c.resume(Unit)
-                else authException(error!!)
+                else c.resumeWithException(authException(error!!))
             }
         }
 
     override suspend fun updateEmail(email: String): Unit = suspendCancellableCoroutine { c ->
         user.updateEmail(email) { error ->
             if (error == null) c.resume(Unit)
-            else authException(error)
+            else c.resumeWithException(authException(error))
         }
     }
 
@@ -267,7 +277,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
         suspendCancellableCoroutine { c ->
             user.updatePassword(password) { error ->
                 if (error == null) c.resume(Unit)
-                else authException(error)
+                else c.resumeWithException(authException(error))
             }
         }
 
@@ -278,7 +288,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
                 if (photoUrl != null) photoURL = NSURL(string = photoUrl)
             }.commitChangesWithCompletion { error ->
                 if (error == null) c.resume(Unit)
-                else authException(error)
+                else c.resumeWithException(authException(error))
             }
         }
 
@@ -288,7 +298,7 @@ private class FirebaseUserImpl(val user: FIRUser, val auth: FIRAuth) : FirebaseU
     ): Unit = suspendCancellableCoroutine { c ->
         val completion: (NSError?) -> Unit = { error ->
             if (error == null) c.resume(Unit)
-            else authException(error)
+            else c.resumeWithException(authException(error))
         }
 
         if (settings == null) user.sendEmailVerificationBeforeUpdatingEmail(newEmail, completion)
@@ -327,7 +337,7 @@ private suspend fun getAnnonymousResult(
     if (action != AuthAction.SignIn) error("Annonymous reauthentication and linking are invalid operations")
     auth.signInAnonymouslyWithCompletion { data, error ->
         if (data != null) c.resume(data)
-        else authException(error!!)
+        else c.resumeWithException(authException(error!!))
     }
 }
 
@@ -339,7 +349,7 @@ private suspend fun getCustomResult(
     if (action != AuthAction.SignIn) error("Custom token reauthentication and linking are invalid operations")
     auth.signInWithCustomToken(method.token) { data, error ->
         if (data != null) c.resume(data)
-        else authException(error!!)
+        else c.resumeWithException(authException(error!!))
     }
 }
 
@@ -354,13 +364,13 @@ private suspend fun getEmailPasswordResult(
     ) { data, error ->
         if (data != null) c.resume(data)
         else auth.createUserWithEmail(method.email, method.password) { data, error ->
-            if (data != null) c.resume(data) else authException(error!!)
+            if (data != null) c.resume(data) else c.resumeWithException(authException(error!!))
         }
     }
     else {
         val completion: (FIRAuthDataResult?, NSError?) -> Unit = { data, error ->
             if (data != null) c.resume(data)
-            else authException(error!!)
+            else c.resumeWithException(authException(error!!))
         }
         val credential =
             FIREmailAuthProvider.credentialWithEmail(method.email, password = method.password)
@@ -380,12 +390,12 @@ private suspend fun getEmailLinkResult(
         link = method.link
     ) { data, error ->
         if (data != null) c.resume(data)
-        else authException(error!!)
+        else c.resumeWithException(authException(error!!))
     }
     else {
         val completion: (FIRAuthDataResult?, NSError?) -> Unit = { data, error ->
             if (data != null) c.resume(data)
-            else authException(error!!)
+            else c.resumeWithException(authException(error!!))
         }
         val credential = FIREmailAuthProvider.credentialWithEmail(method.email, link = method.link)
         if (action == AuthAction.Reauthenticate)
@@ -397,7 +407,7 @@ private suspend fun getEmailLinkResult(
 private suspend fun getOAuthCredential(oAuthProvider: FIROAuthProvider): FIRAuthCredential =
     suspendCancellableCoroutine { c ->
         oAuthProvider.getCredentialWithUIDelegate(null) { data, error ->
-            if (error != null) authException(error)
+            if (error != null) c.resumeWithException(authException(error))
             c.resume(data!!)
         }
     }
@@ -456,7 +466,7 @@ private suspend fun getAppleCredential(
                 ?: return@AppleDelegate
 
             val appleIDToken = appleIDCredential.identityToken
-                ?: run { println("Unable to fetch identity token"); return@AppleDelegate }
+                ?: throw AuthException(AuthException.Code.AuthWeb, "Unable to fetch identity token")
 
             val idToken = NSString.create(appleIDToken, NSUTF8StringEncoding)
                 ?: error("Unable to serialize token string from data: $appleIDToken")
@@ -609,7 +619,7 @@ private suspend fun toCredentialHolder(method: AuthMethod, auth: FIRAuth): Crede
                 GIDConfiguration(method.webClientId),
                 method.ui as UIViewController
             ) { data, error ->
-                if (error != null) authException(error)
+                if (error != null) c.resumeWithException(authException(error))
                 c.resume(
                     CredentialHolder(
                         FIRGoogleAuthProvider.credentialWithIDToken(
@@ -636,7 +646,7 @@ private fun toFIRCodeSettings(settings: ActionCodeSettings): FIRActionCodeSettin
         if (settings.url != null) URL = NSURL(string = settings.url!!)
     }
 
-private fun authException(error: NSError): Nothing {
+private fun authException(error: NSError): AuthException {
     val code = when (error.code) {
         FIRAuthErrorCodeInvalidActionCode,
         FIRAuthErrorCodeExpiredActionCode -> AuthException.Code.ActionCode
@@ -675,7 +685,7 @@ private fun authException(error: NSError): Nothing {
 
         else -> AuthException.Code.Unknown
     }
-    throw AuthException(code, error.description)
+    return AuthException(code, error.description)
 }
 
 

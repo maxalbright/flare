@@ -191,7 +191,7 @@ private fun toStorageException(exception: Exception): StorageException {
         AndroidException.ERROR_QUOTA_EXCEEDED -> StorageException.Code.QuotaExceeded
         AndroidException.ERROR_RETRY_LIMIT_EXCEEDED -> StorageException.Code.RetryLimitExceeded
         AndroidException.ERROR_OBJECT_NOT_FOUND -> StorageException.Code.ObjectNotFound
-        else -> StorageException.Code.Unknown.also { println("Encountered unknown firebase storage error code: ${exception.errorCode}") }
+        else -> StorageException.Code.Unknown
     })
 }
 

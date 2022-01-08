@@ -5,7 +5,7 @@ import kotlin.random.Random
 import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class FirestoreTest : FlareTest() {
+class FirestoreTest: FlareTest() {
 
     val firestore by lazy {
         if (useLocal) LocalFirestore() else FirebaseFirestore.instance
@@ -23,9 +23,6 @@ class FirestoreTest : FlareTest() {
     fun setGetOnceAllTypes() = runTest {
         firestore.setDocument("test/$testId/getSetAll/myData", myData)
         val data: MyData = firestore.getDocumentOnce("test/$testId/getSetAll/myData").data()
-
-        println(data)
-        println(myData)
         assertEquals(myData.map, data.map)
         assertEquals(
             myData.toString().replace("map=\\{.*\\)\\},".toRegex(), ""),
@@ -34,7 +31,7 @@ class FirestoreTest : FlareTest() {
     }
 
     @Test
-    fun getSetMultiple() = runBlocking {
+    fun getSetMultiple() = runTest {
         firestore.setDocument("test/$testId/getSetMultiple/megan", megan)
         var updates = 0
         val job = launch {
@@ -45,23 +42,22 @@ class FirestoreTest : FlareTest() {
             }
         }
         firestore.setDocument("test/$testId/getSetMultiple/megan", megan)
-        delay(5)
+        yield()
         assertEquals(1, updates)
         firestore.setDocument("test/$testId/getSetMultiple/megan", megan.copy(age = 3))
-        delay(5)
+        yield()
         assertEquals(2, updates)
         job.cancel()
     }
 
     @Test
-    fun update(): Unit = runBlocking {
+    fun update(): Unit = runTest {
         firestore.setDocument("test/$testId/update/megan", megan)
         firestore.updateDocument("test/$testId/update/megan", mapOf("age" to 5L))
         val age = firestore.getDocumentOnce("test/$testId/update/megan").data<Dog>().age
         assertEquals(5, age)
         delay(500)
         try {
-            println("update1")
             firestore.updateDocument("test/$testId/update/invalid", map = mapOf<String, Any>())
             fail()
         } catch (t: FirestoreException) {
@@ -69,7 +65,7 @@ class FirestoreTest : FlareTest() {
     }
 
     @Test
-    fun delete(): Unit = runBlocking {
+    fun delete(): Unit = runTest {
         firestore.setDocument("test/$testId/delete/megan", megan)
         firestore.deleteDocument("test/$testId/delete/megan")
         delay(500)
@@ -114,7 +110,7 @@ class FirestoreTest : FlareTest() {
     }
 
     @Test
-    fun doesThrow(): Unit = runBlocking {
+    fun doesThrow(): Unit = runTest {
         try {
             firestore.deleteDocument("test/${testId}/blankk/hi")
         } catch (e: Exception) {

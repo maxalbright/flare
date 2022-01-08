@@ -12,6 +12,7 @@ import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.dataWithBytes
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 private class DocumentImpl(val document: FIRDocumentSnapshot) :
     MapDocument((document.data() ?: emptyMap<String, Any>()) as Map<String, Any>) {
@@ -39,23 +40,23 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                     when {
                         data != null -> trySendBlocking(DocumentImpl(data))
                         error!!.code == FIRFirestoreErrorCodeCancelled -> return@addSnapshotListenerWithIncludeMetadataChanges
-                        else -> firestoreException(error)
+                        else -> throw firestoreException(error)
                     }
                 }
             awaitClose { registration.remove() }
         }
 
     override suspend fun getDocumentOnce(path: String, source: Source): Document =
-        suspendCancellableCoroutine { c ->
+        suspendCancellableCoroutine<Document> { c ->
             firestore.documentWithPath(path)
                 .getDocumentWithSource(toFIRSource(source)) { data, error ->
                     if (data?.data() != null && data.data()!!.isNotEmpty()) c.resume(
                         DocumentImpl(data)
-                    ) else if (data?.data()?.isEmpty() != false) throw FirestoreException(
+                    ) else if (data?.data()?.isEmpty() != false) c.resumeWithException(FirestoreException(
                         FirestoreException.Code.NotFound,
                         "Returned document at path [$path] had no data"
-                    )
-                    else firestoreException(error!!)
+                    ))
+                    else c.resumeWithException(firestoreException(error!!))
                 }
         }
 
@@ -70,7 +71,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
             val d = if (changes == null) map else ChangesImpl(map).apply(changes).newData
             val completion: (NSError?) -> Unit = { error ->
                 if (error == null) c.resume(Unit)
-                else firestoreException(error)
+                else c.resumeWithException(firestoreException(error))
             }
             val document = firestore.documentWithPath(path)
             if (merge is Merge.Fields)
@@ -88,7 +89,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
             val document = firestore.documentWithPath(path)
             document.updateData(d as Map<Any?, *>) { error ->
                 if (error == null) c.resume(Unit)
-                else firestoreException(error)
+                else c.resumeWithException(firestoreException(error))
             }
         }
 
@@ -97,7 +98,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
             val document = firestore.documentWithPath(path)
             document.deleteDocumentWithCompletion { error ->
                 if (error == null) c.resume(Unit)
-                else firestoreException(error)
+                else c.resumeWithException(firestoreException(error))
             }
         }
 
@@ -114,7 +115,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                     data != null ->
                         trySendBlocking(CollectionImpl(data, path.takeLastWhile { it != '/' }))
                     error!!.code == FIRFirestoreErrorCodeCancelled -> return@addSnapshotListenerWithIncludeMetadataChanges
-                    else -> firestoreException(error)
+                    else -> throw firestoreException(error)
                 }
             }
         awaitClose { registration.remove() }
@@ -129,7 +130,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         val q = QueryImpl(collection).also { if (query != null) query(it) }.query
         q.getDocumentsWithSource(toFIRSource(source)) { data, error ->
             if (data != null) c.resume(CollectionImpl(data, path.takeLastWhile { it != '/' }))
-            else firestoreException(error!!)
+            else c.resumeWithException(firestoreException(error!!))
         }
     }
 
@@ -153,7 +154,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                             )
                         )
                         error!!.code == FIRFirestoreErrorCodeCancelled -> return@addSnapshotListenerWithIncludeMetadataChanges
-                        else -> firestoreException(error)
+                        else -> throw firestoreException(error)
                     }
                 }
         }
@@ -178,7 +179,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                         )
                     )
                     error!!.code == FIRFirestoreErrorCodeCancelled -> return@getDocumentsWithSource
-                    else -> firestoreException(error)
+                    else -> c.resumeWithException(firestoreException(error))
                 }
             }
         }
@@ -198,7 +199,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                 transaction(TransactionImpl(firestore, transaction!!))
             }) { data, error ->
                 if (error == null) c.resume(Unit)
-                else firestoreException(error)
+                else c.resumeWithException(firestoreException(error))
             }
         }
 
@@ -223,7 +224,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                         )
                     ) { data, error ->
                         if (error == null) c.resume(Unit)
-                        else firestoreException(error)
+                        else c.resumeWithException(firestoreException(error))
                     }
                 }
             }
@@ -237,7 +238,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         override suspend fun clearPersistence(): Unit = suspendCancellableCoroutine { c ->
             firestore.clearPersistenceWithCompletion { error ->
                 if (error == null) c.resume(Unit)
-                else firestoreException(error)
+                else c.resumeWithException(firestoreException(error))
             }
         }
 
@@ -245,7 +246,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
             suspendCancellableCoroutine { c ->
                 val completion: (NSError?) -> Unit = { error ->
                     if (error == null) c.resume(Unit)
-                    else firestoreException(error)
+                    else c.resumeWithException(firestoreException(error))
                 }
                 if (enabled) firestore.enableNetworkWithCompletion(completion)
                 else firestore.disableNetworkWithCompletion(completion)
@@ -254,20 +255,20 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         override suspend fun terminate(): Unit = suspendCancellableCoroutine { c ->
             firestore.terminateWithCompletion { error ->
                 if (error == null) c.resume(Unit)
-                else firestoreException(error)
+                else c.resumeWithException(firestoreException(error))
             }
         }
 
         override suspend fun waitForPendingWrites(): Unit = suspendCancellableCoroutine { c ->
             firestore.waitForPendingWritesWithCompletion { error ->
                 if (error == null) c.resume(Unit)
-                else firestoreException(error)
+                else c.resumeWithException(firestoreException(error))
             }
         }
 
     }
 
-    private fun firestoreException(error: NSError): Nothing {
+    private fun firestoreException(error: NSError): FirestoreException {
         val code = when (error.code) {
             FIRFirestoreErrorCodeInvalidArgument -> FirestoreException.Code.InvalidArgument
             FIRFirestoreErrorCodeAlreadyExists -> FirestoreException.Code.AlreadyExists
@@ -285,7 +286,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
             FIRFirestoreErrorCodeUnauthenticated -> FirestoreException.Code.Unauthenticated
             else -> FirestoreException.Code.Unknown
         }
-        throw FirestoreException(code, error.description)
+        return FirestoreException(code, error.description)
     }
 
     private fun toFIRSource(source: Source): FIRFirestoreSource = when (source) {
