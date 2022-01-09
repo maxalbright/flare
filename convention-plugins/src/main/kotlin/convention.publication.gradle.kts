@@ -62,13 +62,13 @@ publishing {
         // Provide artifacts information requited by Maven Central
         pom {
             name.set("Magic")
-            description.set("Simple, lightweight, modular components and utilities to help conjure your app architecture.")
-            url.set("https://github.com/TeraThought/magic")
+            description.set("Light the way for your app's backend with functional and testable Firebase components")
+            url.set("https://github.com/TeraThought/flare")
 
             licenses {
                 license {
                     name.set("Apache 2.0")
-                    url.set("https://github.com/TeraThought/magic/blob/main/LICENSE")
+                    url.set("https://github.com/TeraThought/flare/blob/main/LICENSE")
                 }
             }
             developers {
@@ -79,7 +79,7 @@ publishing {
                 }
             }
             scm {
-                url.set("https://github.com/TeraThought/magic")
+                url.set("https://github.com/TeraThought/flare")
             }
 
         }
