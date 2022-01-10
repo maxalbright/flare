@@ -17,11 +17,8 @@ repositories {
 
 kotlin {
     android()
-    ios {
-        binaries {
-            executable()
-        }
-    }
+    jvm()
+    ios()
     iosSimulatorArm64()
     cocoapods {
         ios.deploymentTarget = "13.5"
@@ -46,6 +43,12 @@ kotlin {
 
     sourceSets {
 
+        val jvmMain by getting {
+            dependencies {
+                implementation("com.google.cloud:google-cloud-firestore:3.0.9")
+            }
+        }
+        val jvmTest by getting
         val commonMain by getting {
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt")
