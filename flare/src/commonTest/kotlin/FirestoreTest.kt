@@ -99,12 +99,13 @@ class FirestoreTest: FlareTest() {
 
             }
         }
+        yield()
         firestore.setDocument("test/$testId/dogs/Hailey", hailey.copy(age = Random.nextInt()))
-        delay(100)
+        yield()
         firestore.setDocument("test/$testId/dogs/Michael", michael.copy(age = Random.nextInt()))
-        delay(100)
+        yield()
         firestore.setDocument("test/$testId/dogs/Jerry", jerry.copy(age = Random.nextInt()))
-        delay(100)
+        yield()
         assertEquals(3, updates)
         job.cancel()
     }
