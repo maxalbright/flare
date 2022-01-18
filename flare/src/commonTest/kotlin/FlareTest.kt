@@ -10,7 +10,7 @@ import kotlin.test.BeforeTest
 
 @OptIn(ExperimentalCoroutinesApi::class)
 open class FlareTest {
-    val useLocal = true //Whether local firebase classes should be used instead of production
+    val useLocal = false //Whether local firebase classes should be used instead of production
     protected val testId: String = Random.nextInt().toString()
 
     init {

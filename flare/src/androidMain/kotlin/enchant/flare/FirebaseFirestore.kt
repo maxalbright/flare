@@ -59,13 +59,21 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
                     DocumentImpl(it.result)
                 )
                 else if (it.result?.data?.isEmpty() != false) c.resumeWithException(
-                    FirestoreException(FirestoreException.Code.NotFound,
-                            "Returned document at path [$path] had no data")
-                    ) else
+                    FirestoreException(
+                        FirestoreException.Code.NotFound,
+                        "Returned document at path [$path] had no data"
+                    )
+                ) else
                     c.resumeWithException(firestoreException(it.exception!!))
             }
         }
 
+    override suspend fun getDocumentOnceOrNull(path: String, source: Source): Document? =
+        try {
+            getDocumentOnce(path, source)
+        } catch (e: FirestoreException) {
+            if (e.code == FirestoreException.Code.NotFound) null else throw e
+        }
 
     override suspend fun setDocument(
         path: String,
@@ -94,23 +102,6 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
                 else c.resumeWithException(firestoreException(it.exception!!))
             }
         }
-
-    internal sealed class Outcome<T> {
-        data class Pass<T>(val result: T) : Outcome<T>()
-        data class Fail<T>(val code: FirestoreException.Code, val message: String? = null) :
-            Outcome<T>()
-    }
-
-    suspend inline fun <T> cancellableCoroutine(
-        crossinline block: (CancellableContinuation<Result<T>>) -> Unit
-    ): T {
-
-        val result = suspendCancellableCoroutine(block)
-        return result.getOrThrow()
-//        return if (result is Outcome.Fail) throw FirestoreException(
-//            result.code, result.message
-//        ) else (result as Outcome.Pass).result
-    }
 
     override suspend fun deleteDocument(path: String): Unit =
         suspendCancellableCoroutine { c ->

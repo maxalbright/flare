@@ -15,9 +15,14 @@ class FirestoreTest: FlareTest() {
     fun setGetOnce() = runTest {
         firestore.setDocument("test/$testId/setGetOnce/ethan", ethan)
         val data: Dog = firestore.getDocumentOnce("test/$testId/setGetOnce/ethan").data()
-
-        assertEquals(ethan, data)
     }
+
+    @Test
+    fun getOnceNull() = runTest {
+        val data: Dog? = firestore.getDocumentOnceOrNull("test/data")?.data()
+        assertNull(data)
+    }
+
 
     @Test
     fun setGetOnceAllTypes() = runTest {

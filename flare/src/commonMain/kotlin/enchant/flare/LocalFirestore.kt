@@ -79,7 +79,10 @@ class LocalFirestore : FirebaseFirestore {
                 is CollectionNode -> (node as CollectionNode).documents[id]
                 else -> error("Unexpected state")
             }
-            if(error) node ?: throw FirestoreException(NotFound, "Collection not found at path $path")
+            if (error) node ?: throw FirestoreException(
+                NotFound,
+                "Collection not found at path $path"
+            )
         }
         return node as? CollectionNode
     }
@@ -100,7 +103,7 @@ class LocalFirestore : FirebaseFirestore {
             if (newNode != null) node = newNode
             newNode != null
         }
-        if(ids.size == idsAmount && ids.isNotEmpty() && ids.first() !in db){
+        if (ids.size == idsAmount && ids.isNotEmpty() && ids.first() !in db) {
             node = CollectionNode(ids.first())
             db[ids.first()] = node as CollectionNode
             ids = ids.drop(1)
@@ -162,6 +165,13 @@ class LocalFirestore : FirebaseFirestore {
         return DocumentImpl(node.data.toMap(), node.id)
     }
 
+    override suspend fun getDocumentOnceOrNull(path: String, source: Source): Document? =
+        try {
+            getDocumentOnce(path, source)
+        } catch (e: FirestoreException) {
+            if (e.code == NotFound) null else throw e
+        }
+
     override suspend fun setDocument(
         path: String,
         map: Map<String, Any>,
@@ -214,7 +224,8 @@ class LocalFirestore : FirebaseFirestore {
         metadataChanges: Boolean,
         query: (Query.() -> Unit)?
     ): Flow<Collection> {
-        val node = getCollectionNode(path) ?: createDocument("$path/_tmp").parent.also { it.documents.remove("_tmp")}
+        val node = getCollectionNode(path)
+            ?: createDocument("$path/_tmp").parent.also { it.documents.remove("_tmp") }
         val localQuery = LocalQuery()
         if (query != null) localQuery.query()
         return node.updates.map {
@@ -229,7 +240,8 @@ class LocalFirestore : FirebaseFirestore {
         source: Source,
         query: (Query.() -> Unit)?
     ): Collection {
-        val node = getCollectionNode(path) ?: createDocument("$path/_tmp").parent.also { it.documents.remove("_tmp")}
+        val node = getCollectionNode(path)
+            ?: createDocument("$path/_tmp").parent.also { it.documents.remove("_tmp") }
         val localQuery = LocalQuery()
         if (query != null) localQuery.query()
         return CollectionImpl(localQuery.apply(node.documents.map {

@@ -17,6 +17,7 @@ interface FirebaseFirestore {
 
     fun getDocument(path: String, metadataChanges: Boolean = false): Flow<Document>
     suspend fun getDocumentOnce(path: String, source: Source = Source.Default): Document
+    suspend fun getDocumentOnceOrNull(path: String, source: Source = Source.Default): Document?
 
     suspend fun setDocument(
         path: String,

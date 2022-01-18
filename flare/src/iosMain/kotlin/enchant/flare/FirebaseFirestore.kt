@@ -60,6 +60,12 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
                 }
         }
 
+    override suspend fun getDocumentOnceOrNull(path: String, source: Source): Document? =
+        try {
+            getDocumentOnce(path, source)
+        } catch (e: FirestoreException) {
+            if (e.code == FirestoreException.Code.NotFound) null else throw e
+        }
 
     override suspend fun setDocument(
         path: String,
