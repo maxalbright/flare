@@ -42,11 +42,11 @@ private fun toFirebaseOptions(options: FIROptions): FirebaseOptions =
 private fun toFIROptions(options: FirebaseOptions): FIROptions =
     FIROptions(options.appId, options.gcmSenderId!!).apply {
         setAPIKey(options.apiKey)
-        setGoogleAppID(options.appId)
+        setAndroidClientID(options.androidClientId!!)
         setDatabaseURL(options.databaseUrl)
         setProjectID(options.projectId)
         setTrackingID(options.measurementId)
-        setStorageBucket(options.gcmSenderId)
+        setStorageBucket(options.storageBucket)
         setBundleID(bundleID)
         setClientID(clientID)
     }

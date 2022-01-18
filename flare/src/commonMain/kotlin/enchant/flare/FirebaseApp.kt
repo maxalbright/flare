@@ -14,7 +14,8 @@ data class FirebaseOptions(
 
     //iOS
     val bundleId: String? = null,
-    val clientId: String? = null
+    val clientId: String? = null,
+    val androidClientId: String? = null
 )
 
 expect class FirebaseApp {
