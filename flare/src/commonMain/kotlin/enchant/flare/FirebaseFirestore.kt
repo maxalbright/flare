@@ -3,7 +3,6 @@ package enchant.flare
 import kotlinx.coroutines.flow.Flow
 
 interface Document : Map<String, Any> {
-    //TODO: Ensure data types are converted to the same Kotlin type (blob, boolean, date, double, geopoint, string, timestamp)
     val id: String
     val metadata: Map<FirestoreMetadata, Any>
 }
