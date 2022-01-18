@@ -96,14 +96,14 @@ sealed class AuthMethod(internal val provider: AuthProvider) {
     data class Custom(val token: String) : AuthMethod(Custom)
 
     data class GitHub(
-        val activity: Any? = null,
+        val activity: Any = Unit,
         val loginHint: String? = null,
         val allowSignUp: Boolean = false,
         val requestEmail: Boolean = false
     ) : AuthMethod(GitHub)
 
     data class Google(
-        val ui: Any,
+        val ui: Any = Unit,
         val webClientId: String,
         val requestEmail: Boolean = false,
         val requestProfile: Boolean = false
@@ -111,7 +111,7 @@ sealed class AuthMethod(internal val provider: AuthProvider) {
 
     data class Twitter(val activity: Any? = null, val locale: String? = null) : AuthMethod(Twitter)
     data class Yahoo(
-        val activity: Any? = null,
+        val activity: Any = Unit,
         val requestProfile: Boolean = false,
         val requestEmail: Boolean = false,
         val language: String? = null,
