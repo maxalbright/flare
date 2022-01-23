@@ -34,7 +34,7 @@ interface FirebaseAuth {
         fun useAppLanguage()
         fun useEmulator(host: String, port: Int)
 
-        val tenantId: String?
+        var tenantId: String?
         val languageCode: String?
     }
 
@@ -183,7 +183,7 @@ interface FirebaseUser {
 
 data class ActionCodeSettings(
     val androidConfig: AndroidConfig? = null,
-    val dynamicLinkDomain: String?,
+    val dynamicLinkDomain: String? = null,
     val handleCodeInApp: Boolean = false,
     val iOSBundleId: String? = null,
     val url: String? = null
