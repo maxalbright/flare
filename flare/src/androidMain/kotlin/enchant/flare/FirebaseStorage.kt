@@ -3,6 +3,7 @@ package enchant.flare
 import android.net.Uri
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import com.google.firebase.storage.FirebaseStorage as AndroidStorage
 import com.google.firebase.storage.StorageException as AndroidException
 import com.google.firebase.storage.StorageMetadata as AndroidMetadata
@@ -12,23 +13,23 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
     override suspend fun deleteFile(path: String): Unit = suspendCancellableCoroutine { c ->
         storage.getReference(path).delete().addOnCompleteListener {
             if (it.isSuccessful) c.resume(Unit)
-            else throw toStorageException(it.exception!!)
+            else c.resumeWithException(toStorageException(it.exception!!))
         }
     }
 
     override suspend fun getBytes(
         path: String, maxDownloadSize: Long
-    ): Array<Byte> = suspendCancellableCoroutine { c ->
+    ): ByteArray = suspendCancellableCoroutine { c ->
         storage.getReference(path).getBytes(maxDownloadSize).addOnCompleteListener {
-            if (it.isSuccessful) c.resume(it.result!!.toTypedArray())
-            else throw toStorageException(it.exception!!)
+            if (it.isSuccessful) c.resume(it.result!!)
+            else c.resumeWithException(toStorageException(it.exception!!))
         }
     }
 
     override suspend fun getDownloadUrl(path: String): String = suspendCancellableCoroutine { c ->
         storage.getReference(path).downloadUrl.addOnCompleteListener {
             if (it.isSuccessful) c.resume(it.result!!.toString())
-            else throw toStorageException(it.exception!!)
+            else c.resumeWithException(toStorageException(it.exception!!))
         }
     }
 
@@ -40,7 +41,7 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
             if (it.isSuccessful) c.resume(Unit)
             else if ((it.exception!! as? AndroidException)?.errorCode == AndroidException.ERROR_CANCELED)
                 return@addOnCompleteListener
-            else throw toStorageException(it.exception!!)
+            else c.resumeWithException(toStorageException(it.exception!!))
         }
         if (onProgress != null) task.addOnProgressListener {
             onProgress(it.bytesTransferred, it.totalByteCount)
@@ -52,7 +53,7 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
         suspendCancellableCoroutine { c ->
             storage.getReference(path).metadata.addOnCompleteListener {
                 if (it.isSuccessful) c.resume(toStorageMetadata(it.result!!))
-                else throw toStorageException(it.exception!!)
+                else c.resumeWithException(toStorageException(it.exception!!))
             }
         }
 
@@ -68,14 +69,14 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
                         it.result.items.map { it.path }, it.result.pageToken
                     )
                 )
-                else throw toStorageException(it.exception!!)
+                else c.resumeWithException(toStorageException(it.exception!!))
             }
         }
 
     override suspend fun putBytes(
         path: String,
         bytes: ByteArray,
-        metadata: StorageMetadata?,
+        metadata: FileMetadata?,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)?
     ): StorageMetadata = suspendCancellableCoroutine { c ->
 
@@ -87,7 +88,7 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
             if (it.isSuccessful) c.resume(toStorageMetadata(it.result!!.metadata))
             else if ((it.exception!! as? AndroidException)?.errorCode == AndroidException.ERROR_CANCELED)
                 return@addOnCompleteListener
-            else throw toStorageException(it.exception!!)
+            else c.resumeWithException(toStorageException(it.exception!!))
         }
         if (onProgress != null) task.addOnProgressListener {
             onProgress(it.bytesTransferred, it.totalByteCount)
@@ -98,7 +99,7 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
     override suspend fun putFile(
         path: String,
         filePath: String,
-        metadata: StorageMetadata?,
+        metadata: FileMetadata?,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)?
     ): StorageMetadata = suspendCancellableCoroutine { c ->
         val task = if (metadata == null) storage.getReference(path)
@@ -108,7 +109,7 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
             if (it.isSuccessful) c.resume(toStorageMetadata(it.result!!.metadata))
             else if ((it.exception!! as? AndroidException)?.errorCode == AndroidException.ERROR_CANCELED)
                 return@addOnCompleteListener
-            else throw toStorageException(it.exception!!)
+            else c.resumeWithException(toStorageException(it.exception!!))
         }
         if (onProgress != null) task.addOnProgressListener {
             onProgress(it.bytesTransferred, it.totalByteCount)
@@ -116,12 +117,12 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
         c.invokeOnCancellation { task.cancel() }
     }
 
-    override suspend fun updateMetadata(path: String, metadata: StorageMetadata): StorageMetadata =
+    override suspend fun updateMetadata(path: String, metadata: FileMetadata): StorageMetadata =
         suspendCancellableCoroutine { c ->
             storage.getReference(path).updateMetadata(toAndroidMetadata(metadata))
                 .addOnCompleteListener {
                     if (it.isSuccessful) c.resume(toStorageMetadata(it.result!!))
-                    else throw toStorageException(it.exception!!)
+                    else c.resumeWithException(toStorageException(it.exception!!))
                 }
         }
 
@@ -151,7 +152,7 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
 
         }
 
-    private fun toAndroidMetadata(metadata: StorageMetadata): AndroidMetadata =
+    private fun toAndroidMetadata(metadata: FileMetadata): AndroidMetadata =
         AndroidMetadata.Builder().apply {
             cacheControl = metadata.cacheControl
             contentDisposition = metadata.contentDisposition
@@ -182,17 +183,19 @@ private class FirebaseStorageImpl(private val storage: AndroidStorage) : Firebas
 
 private fun toStorageException(exception: Exception): StorageException {
     if (exception !is AndroidException) throw(exception)
-    return StorageException(when (exception.errorCode) {
-        AndroidException.ERROR_BUCKET_NOT_FOUND -> StorageException.Code.BucketNotFound
-        AndroidException.ERROR_INVALID_CHECKSUM -> StorageException.Code.InvalidChecksum
-        AndroidException.ERROR_NOT_AUTHENTICATED -> StorageException.Code.NotAuthenticated
-        AndroidException.ERROR_NOT_AUTHORIZED -> StorageException.Code.NotAuthorized
-        AndroidException.ERROR_PROJECT_NOT_FOUND -> StorageException.Code.ProjectNotFound
-        AndroidException.ERROR_QUOTA_EXCEEDED -> StorageException.Code.QuotaExceeded
-        AndroidException.ERROR_RETRY_LIMIT_EXCEEDED -> StorageException.Code.RetryLimitExceeded
-        AndroidException.ERROR_OBJECT_NOT_FOUND -> StorageException.Code.ObjectNotFound
-        else -> StorageException.Code.Unknown
-    })
+    return StorageException(
+        when (exception.errorCode) {
+            AndroidException.ERROR_BUCKET_NOT_FOUND -> StorageException.Code.BucketNotFound
+            AndroidException.ERROR_INVALID_CHECKSUM -> StorageException.Code.InvalidChecksum
+            AndroidException.ERROR_NOT_AUTHENTICATED -> StorageException.Code.NotAuthenticated
+            AndroidException.ERROR_NOT_AUTHORIZED -> StorageException.Code.NotAuthorized
+            AndroidException.ERROR_PROJECT_NOT_FOUND -> StorageException.Code.ProjectNotFound
+            AndroidException.ERROR_QUOTA_EXCEEDED -> StorageException.Code.QuotaExceeded
+            AndroidException.ERROR_RETRY_LIMIT_EXCEEDED -> StorageException.Code.RetryLimitExceeded
+            AndroidException.ERROR_OBJECT_NOT_FOUND -> StorageException.Code.ObjectNotFound
+            else -> StorageException.Code.Unknown
+        }, exception.message
+    )
 }
 
 internal actual val firebaseStorageInstance: FirebaseStorage by lazy {

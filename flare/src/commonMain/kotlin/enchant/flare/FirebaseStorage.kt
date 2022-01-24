@@ -4,7 +4,7 @@ interface FirebaseStorage {
 
     suspend fun deleteFile(path: String)
 
-    suspend fun getBytes(path: String, maxDownloadSize: Long): Array<Byte>
+    suspend fun getBytes(path: String, maxDownloadSize: Long): ByteArray
 
     suspend fun getDownloadUrl(path: String): String
     suspend fun getFile(
@@ -14,16 +14,16 @@ interface FirebaseStorage {
     suspend fun getMetadata(path: String): StorageMetadata
     suspend fun list(path: String, maxResults: Int? = null, pageToken: String? = null): ListResult
     suspend fun putBytes(
-        path: String, bytes: ByteArray, metadata: StorageMetadata? = null,
+        path: String, bytes: ByteArray, metadata: FileMetadata? = null,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)? = null
     ): StorageMetadata
 
     suspend fun putFile(
-        path: String, filePath: String, metadata: StorageMetadata? = null,
+        path: String, filePath: String, metadata: FileMetadata? = null,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)? = null
     ): StorageMetadata
 
-    suspend fun updateMetadata(path: String, metadata: StorageMetadata): StorageMetadata
+    suspend fun updateMetadata(path: String, metadata: FileMetadata): StorageMetadata
 
     val config: Config
 
@@ -40,7 +40,14 @@ interface FirebaseStorage {
         fun getInstance(app: FirebaseApp) = getStorageInstance(app)
     }
 }
-
+data class FileMetadata(
+    val cacheControl: String? = null,
+    val contentDisposition: String? = null,
+    val contentEncoding: String? = null,
+    val contentLanguage: String? = null,
+    val contentType: String? = null,
+    val customMetadata: Map<String, String> = mapOf()
+)
 data class StorageMetadata(
     val bucket: String?,
     val cacheControl: String?,

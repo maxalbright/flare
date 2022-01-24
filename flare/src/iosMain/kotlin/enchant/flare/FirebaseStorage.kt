@@ -5,34 +5,35 @@ import kotlinx.cinterop.*
 import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.*
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
 
     override suspend fun deleteFile(path: String): Unit = suspendCancellableCoroutine { c ->
         storage.referenceWithPath(path).deleteWithCompletion { error ->
             if (error == null) c.resume(Unit)
-            else storageException(error)
+            else c.resumeWithException(toStorageException(error))
         }
     }
 
     override suspend fun getBytes(
         path: String, maxDownloadSize: Long
-    ): Array<Byte> = suspendCancellableCoroutine { c ->
+    ): ByteArray = suspendCancellableCoroutine { c ->
         storage.referenceWithPath(path).dataWithMaxSize(maxDownloadSize) { data, error ->
 
             if (data != null) memScoped {
                 val p = StableRef.create(ByteArray(data.length.toInt()))
                 data.getBytes(p.asCPointer())
-                c.resume(p.get().toTypedArray())
+                c.resume(p.get())
             }
-            else storageException(error!!)
+            else c.resumeWithException(toStorageException(error!!))
         }
     }
 
     override suspend fun getDownloadUrl(path: String): String = suspendCancellableCoroutine { c ->
         storage.referenceWithPath(path).downloadURLWithCompletion { data, error ->
             if (data != null) c.resume(data.toString())
-            else storageException(error!!)
+            else c.resumeWithException(toStorageException(error!!))
         }
     }
 
@@ -45,7 +46,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
                 .writeToFile(NSURL(fileURLWithPath = filePath)) { data, error ->
                     if (data != null) c.resume(Unit)
                     else if (error!!.code == FIRStorageErrorCodeCancelled) return@writeToFile
-                    else storageException(error)
+                    else c.resumeWithException(toStorageException(error))
                 }
         if (onProgress != null) task.observeStatus(FIRStorageTaskStatus.FIRStorageTaskStatusProgress) { snapshot ->
             onProgress(snapshot!!.progress!!.completedUnitCount, snapshot.progress!!.totalUnitCount)
@@ -57,7 +58,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
         suspendCancellableCoroutine { c ->
             storage.referenceWithPath(path).metadataWithCompletion { data, error ->
                 if (data != null) c.resume(toStorageMetadata(data))
-                else storageException(error!!)
+                else c.resumeWithException(toStorageException(error!!))
             }
         }
 
@@ -69,7 +70,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
                         data.items.map { (it as FIRStorageReference).fullPath }, data.pageToken
                     )
                 )
-                else storageException(error!!)
+                else c.resumeWithException(toStorageException(error!!))
             }
             when {
                 maxResults == null -> storage.referenceWithPath(path)
@@ -85,7 +86,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
     override suspend fun putBytes(
         path: String,
         bytes: ByteArray,
-        metadata: StorageMetadata?,
+        metadata: FileMetadata?,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)?
     ): StorageMetadata = suspendCancellableCoroutine { c ->
         var d: NSData? = null
@@ -98,7 +99,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
             metadata?.let { toFIRMetadata(it) }) { data, error ->
             if (data != null) c.resume(toStorageMetadata(data))
             else if (error!!.code == FIRStorageErrorCodeCancelled) return@putData
-            else storageException(error)
+            else c.resumeWithException(toStorageException(error))
         }
         if (onProgress != null) task.observeStatus(FIRStorageTaskStatus.FIRStorageTaskStatusProgress) { snapshot ->
             onProgress(snapshot!!.progress!!.completedUnitCount, snapshot.progress!!.totalUnitCount)
@@ -109,14 +110,14 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
     override suspend fun putFile(
         path: String,
         filePath: String,
-        metadata: StorageMetadata?,
+        metadata: FileMetadata?,
         onProgress: ((bytesUploaded: Long, totalBytes: Long) -> Unit)?
     ): StorageMetadata = suspendCancellableCoroutine { c ->
         val task = storage.referenceWithPath(path).putFile(NSURL(fileURLWithPath = filePath),
             metadata?.let { toFIRMetadata(it) }) { data, error ->
             if (data != null) c.resume(toStorageMetadata(data))
             else if (error!!.code == FIRStorageErrorCodeCancelled) return@putFile
-            else storageException(error)
+            else c.resumeWithException(toStorageException(error))
         }
         if (onProgress != null) task.observeStatus(FIRStorageTaskStatus.FIRStorageTaskStatusProgress) { snapshot ->
             onProgress(snapshot!!.progress!!.completedUnitCount, snapshot.progress!!.totalUnitCount)
@@ -124,11 +125,11 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
         c.invokeOnCancellation { task.cancel() }
     }
 
-    override suspend fun updateMetadata(path: String, metadata: StorageMetadata): StorageMetadata =
+    override suspend fun updateMetadata(path: String, metadata: FileMetadata): StorageMetadata =
         suspendCancellableCoroutine { c ->
             storage.referenceWithPath(path).updateMetadata(toFIRMetadata(metadata)) { data, error ->
                 if (data != null) c.resume(toStorageMetadata(data))
-                else storageException(error!!)
+                else c.resumeWithException(toStorageException(error!!))
             }
         }
 
@@ -158,7 +159,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
 
         }
 
-    private fun toFIRMetadata(metadata: StorageMetadata): FIRStorageMetadata =
+    private fun toFIRMetadata(metadata: FileMetadata): FIRStorageMetadata =
         FIRStorageMetadata().apply {
             cacheControl = metadata.cacheControl
             contentDisposition = metadata.contentDisposition
@@ -187,7 +188,7 @@ class FirebaseStorageImpl(private val storage: FIRStorage) : FirebaseStorage {
     )
 }
 
-private fun storageException(error: NSError): Nothing {
+private fun toStorageException(error: NSError): StorageException {
     val code = when (error.code) {
         FIRStorageErrorCodeBucketNotFound -> StorageException.Code.BucketNotFound
         FIRStorageErrorCodeNonMatchingChecksum -> StorageException.Code.InvalidChecksum
@@ -199,7 +200,7 @@ private fun storageException(error: NSError): Nothing {
         FIRStorageErrorCodeObjectNotFound -> StorageException.Code.ObjectNotFound
         else -> StorageException.Code.Unknown
     }
-    throw StorageException(code, error.description)
+    return StorageException(code, error.description)
 }
 
 internal actual val firebaseStorageInstance: FirebaseStorage by lazy {

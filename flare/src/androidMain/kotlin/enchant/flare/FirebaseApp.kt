@@ -50,5 +50,5 @@ private fun toAndroidOptions(options: FirebaseOptions): AndroidFirebaseOptions =
         setProjectId(options.projectId)
         setGaTrackingId(options.measurementId)
         setGcmSenderId(options.gcmSenderId)
-        setStorageBucket(options.gcmSenderId)
+        setStorageBucket(options.storageBucket)
     }.build()
