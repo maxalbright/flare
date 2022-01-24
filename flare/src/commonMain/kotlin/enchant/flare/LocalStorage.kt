@@ -187,4 +187,7 @@ class LocalStorage : FirebaseStorage {
             }
 
         }
+    companion object {
+        val instance: LocalStorage by lazy { LocalStorage() }
+    }
 }

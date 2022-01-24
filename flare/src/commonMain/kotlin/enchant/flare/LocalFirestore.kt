@@ -272,6 +272,9 @@ class LocalFirestore : FirebaseFirestore {
     override val config: FirebaseFirestore.Config
         get() = TODO("Not yet implemented")
 
+    companion object {
+        val instance: LocalFirestore by lazy { LocalFirestore() }
+    }
 }
 
 private class LocalChangesImpl(data: Map<String, Any>) : Changes {

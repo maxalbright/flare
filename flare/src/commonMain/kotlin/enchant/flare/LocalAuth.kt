@@ -351,4 +351,7 @@ class LocalAuth : FirebaseAuth {
         }
 
     }
+    companion object {
+        val instance: LocalAuth by lazy { LocalAuth() }
+    }
 }
