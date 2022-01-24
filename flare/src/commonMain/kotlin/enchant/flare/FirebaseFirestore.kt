@@ -57,7 +57,7 @@ interface FirebaseFirestore {
     interface Config {
         var settings: FirebaseFirestoreSettings
         fun useEmulator(host: String, port: Int)
-        suspend fun loadBundle(data: Array<Byte>)
+        suspend fun loadBundle(data: ByteArray)
         suspend fun snapshotsInSync(action: () -> Unit)
         suspend fun clearPersistence()
         suspend fun enableNetwork(enabled: Boolean)

@@ -212,9 +212,9 @@ private class FirebaseFirestoreImpl(private val firestore: AndroidFirestore) :
 
         override fun useEmulator(host: String, port: Int): Unit = firestore.useEmulator(host, port)
 
-        override suspend fun loadBundle(data: Array<Byte>): Unit =
+        override suspend fun loadBundle(data: ByteArray): Unit =
             suspendCancellableCoroutine { c ->
-                firestore.loadBundle(data.toByteArray()).addOnCompleteListener {
+                firestore.loadBundle(data).addOnCompleteListener {
                     if (it.isSuccessful) c.resume(Unit)
                     else c.resumeWithException(firestoreException(it.exception!!))
                 }

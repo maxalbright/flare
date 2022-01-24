@@ -219,10 +219,10 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
         override fun useEmulator(host: String, port: Int): Unit =
             firestore.useEmulatorWithHost(host, port.toLong())
 
-        override suspend fun loadBundle(data: Array<Byte>): Unit =
+        override suspend fun loadBundle(data: ByteArray): Unit =
             suspendCancellableCoroutine { c ->
                 memScoped {
-                    val p = allocArrayOf(data.toByteArray())
+                    val p = allocArrayOf(data)
                     firestore.loadBundle(
                         NSData.dataWithBytes(
                             p,
