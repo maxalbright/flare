@@ -61,7 +61,7 @@ publishing {
 
         // Provide artifacts information requited by Maven Central
         pom {
-            name.set("Magic")
+            name.set("Flare")
             description.set("Light the way for your app's backend with functional and testable Firebase components")
             url.set("https://github.com/TeraThought/flare")
 
@@ -73,9 +73,9 @@ publishing {
             }
             developers {
                 developer {
-                    id.set("ancientethan")
+                    id.set("ethanhsuhsu")
                     name.set("Ethan Hsu")
-                    email.set("ethan.hsu@terathought.com")
+                    email.set("ethanhsuhsu@gmail.com")
                 }
             }
             scm {
