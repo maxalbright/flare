@@ -2,13 +2,13 @@ val kotlin_version: String by extra
 plugins {
     kotlin("multiplatform")
     kotlin("native.cocoapods")
-    kotlin("plugin.serialization")  version "1.6.0"
+    kotlin("plugin.serialization")  version "1.6.10"
     id("com.android.library")
     id("convention.publication")
 }
 
 group = "com.terathought.enchant"
-version = "1.0.0-alpha02"
+version = "1.0.0-alpha04"
 
 repositories {
     google()
@@ -17,7 +17,7 @@ repositories {
 
 kotlin {
     android {
-        publishLibraryVariants("release", "debug")
+        publishLibraryVariants("release")
     }
     jvm()
     ios()
