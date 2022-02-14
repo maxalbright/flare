@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.terathought.enchant"
-version = "1.0.0-alpha04"
+version = "1.0.0-alpha05"
 
 repositories {
     google()
@@ -17,7 +17,7 @@ repositories {
 
 kotlin {
     android {
-        publishLibraryVariants("release")
+        publishAllLibraryVariants()
     }
     jvm()
     ios()
