@@ -9,7 +9,7 @@ data class FirebaseOptions(
     val measurementId: String? = null,
     val storageBucket: String? = null,
 
-    //JS
+    //Only for JS
     val authDomain: String? = null,
 
     //iOS
