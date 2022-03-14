@@ -12,7 +12,7 @@ data class FirebaseOptions(
     //Only for JS
     val authDomain: String? = null,
 
-    //iOS
+    //Only for iOS
     val bundleId: String? = null,
     val clientId: String? = null,
     val androidClientId: String? = null
