@@ -5,7 +5,7 @@ import kotlinx.coroutines.withTimeout
 
 abstract class LocalFunctions : FirebaseFunctions {
 
-    abstract fun callFunction(name: String, data: Any?): Any?
+    abstract suspend fun callFunction(name: String, data: Any?): Any?
     override suspend fun call(name: String, data: Any?, timeout: Long?): Any? {
         return if (timeout != null) {
             try {

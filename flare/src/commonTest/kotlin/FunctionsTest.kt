@@ -16,7 +16,7 @@ class FunctionsTest : FlareTest() {
 }
 
 private class MyLocalFunctions : LocalFunctions() {
-    override fun callFunction(name: String, data: Any?): Any? {
+    override suspend fun callFunction(name: String, data: Any?): Any? {
         if (name == "increment") {
             return (data as Int) + 1
         } else {
