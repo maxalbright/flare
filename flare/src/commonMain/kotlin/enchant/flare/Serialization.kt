@@ -12,16 +12,16 @@ import kotlin.collections.List
 import kotlin.collections.Map
 
 
-inline fun <reified T> Document.data(strategy: DeserializationStrategy<T> = serializer()): T {
+inline fun <reified T: Any> Document.data(strategy: DeserializationStrategy<T> = serializer()): T {
     val document: Document = this
     val decoder = FirebaseDecoder(document.id, document)
     return decoder.decodeSerializableValue(strategy)
 }
 
-inline fun <reified T> Collection.data(strategy: DeserializationStrategy<T> = serializer()): List<T> =
+inline fun <reified T: Any> Collection.data(strategy: DeserializationStrategy<T> = serializer()): List<T> =
     documents.map { it.data(strategy) }
 
-suspend inline fun <reified T> FirebaseFirestore.setDocument(
+suspend inline fun <reified T: Any> FirebaseFirestore.setDocument(
     path: String, data: T, options: Merge = Merge.None,
     strategy: SerializationStrategy<T> = serializer(),
     noinline changes: (Changes.() -> Unit)? = null
@@ -31,7 +31,7 @@ suspend inline fun <reified T> FirebaseFirestore.setDocument(
     return setDocument(path, encoder.map!!, options, changes)
 }
 
-suspend inline fun <reified T> FirebaseFirestore.updateDocument(
+suspend inline fun <reified T: Any> FirebaseFirestore.updateDocument(
     path: String, data: T, strategy: SerializationStrategy<T> = serializer(),
     noinline changes: (Changes.() -> Unit)? = null
 ) {
@@ -55,7 +55,7 @@ suspend inline fun <reified E> FirebaseFunctions.call(
     return call(name, newData, timeout)
 }
 
-suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
+suspend inline fun <reified E : Any, reified T: Any> FirebaseFunctions.call(
     name: String,
     data: E? = null,
     timeout: Long? = null,
@@ -69,7 +69,7 @@ suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
     } else output
 }
 
-suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
+suspend inline fun <reified T: Any> FirebaseFunctions.call(
     name: String,
     data: Any? = null,
     timeout: Long? = null,
