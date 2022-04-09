@@ -1,6 +1,7 @@
 import enchant.flare.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
 import kotlin.test.Test
@@ -18,7 +19,7 @@ class SerializationTest {
 
     @Test
     fun decode() {
-        val decoder = FirebaseDecoder(ethanMap)
+        val decoder = FirebaseDecoder("myId", ethanMap)
         val person: Person = decoder.decodeSerializableValue(serializer())
         assertEquals(ethan, person)
     }
@@ -37,12 +38,36 @@ class SerializationTest {
 
     @Test
     fun fullDecode() {
-        val decoder = FirebaseDecoder(myDataMap)
+        val decoder = FirebaseDecoder("myId", myDataMap)
         val data: MyData = decoder.decodeSerializableValue(serializer())
         assertEquals(myData.toString(), data.toString())
     }
+
+    @Test
+    fun idEncode() {
+        val encoder = FirebaseEncoder()
+        encoder.encodeSerializableValue(serializer(), idPerson)
+        assertEquals(idPersonMap, encoder.map!!)
+    }
+
+    @Test
+    fun idDecode() {
+        val decoder = FirebaseDecoder("myDocId", idPersonMap)
+        val data: IdPerson = decoder.decodeSerializableValue(serializer())
+        assertEquals(idPerson, data)
+    }
 }
 
+@Serializable
+data class IdPerson(
+    @SerialName(DocId)
+    val id: String,
+    val name: String = ""
+)
+val idPerson = IdPerson("myDocId", "Ethan")
+val idPersonMap: Map<String, Any?> = mapOf(
+    "name" to "Ethan"
+)
 @Serializable
 data class Person(
     val name: String,
@@ -134,7 +159,7 @@ data class MyData(
     val string: String = "",
 )
 
-val myDataMap = mapOf(
+val myDataMap: Map<String, Any?> = mapOf(
     "array" to listOf(1L, 5L, 2L),
     "blob" to toBlob(blob),
     "list" to listOf(ethanMap, vikramMap, jeffMap),

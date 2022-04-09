@@ -14,7 +14,7 @@ import kotlin.collections.Map
 
 inline fun <reified T> Document.data(strategy: DeserializationStrategy<T> = serializer()): T {
     val document: Document = this
-    val decoder = FirebaseDecoder(document)
+    val decoder = FirebaseDecoder(document.id, document)
     return decoder.decodeSerializableValue(strategy)
 }
 
@@ -64,7 +64,7 @@ suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
 ): T? {
     val output: Any? = call(name, data, timeout, inputStrategy)
     return if (output != null) {
-        val decoder = FirebaseDecoder(output as Map<String, Any?>)
+        val decoder = FirebaseDecoder("", output as Map<String, Any?>)
         decoder.decodeSerializableValue(outputStrategy)
     } else output
 }
@@ -77,7 +77,7 @@ suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
 ): T? {
     val output: Any? = call(name, data, timeout)
     return if (output != null) {
-        val decoder = FirebaseDecoder(output as Map<String, Any?>)
+        val decoder = FirebaseDecoder("", output as Map<String, Any?>)
         decoder.decodeSerializableValue(outputStrategy)
     } else output
 }
@@ -146,12 +146,12 @@ class FirebaseEncoder(
     override fun encodeValue(value: Any) {
         key = null
         if (kind == StructureKind.LIST) list!! += value else
-            map!![descriptor!!.getElementName(index++)] = value
+            map!![descriptor!!.getElementName(index)] = value
+        index++
     }
 
     override fun encodeNull() {
         key = null
-
         index++
     }
 
@@ -159,7 +159,10 @@ class FirebaseEncoder(
         if (descriptor!!.getElementName(index).toIntOrNull() != null) {
             key = value
             index++
-        } else encodeValue(value)
+        } else if (descriptor.getElementName(index) != DocId) encodeValue(value)
+        else {
+            index++
+        }
     }
 }
 
@@ -211,12 +214,18 @@ class BlobDecoder(
     override fun decodeByte(): Byte = blob[index++]
 }
 
+/** When used in a [SerialName] annotation, will replace the current property with the id of the
+ * document. A [DocId] property will not be encoded, and will not become a field in a Firestore document
+ * */
+const val DocId = "DocId"
+
 @OptIn(ExperimentalSerializationApi::class)
 class FirebaseDecoder(
+    val id: String,
     val map: Map<String, Any?>? = null,
     val list: List<Any?>? = null,
     val kind: StructureKind = StructureKind.MAP,
-    val descriptor: SerialDescriptor? = null
+    val descriptor: SerialDescriptor? = null,
 ) : AbstractDecoder() {
 
     var index = 0
@@ -249,6 +258,7 @@ class FirebaseDecoder(
         index++
 
         return FirebaseDecoder(
+            id,
             (if (descriptor.kind != StructureKind.LIST) data else null) as Map<String, Any?>?,
             (if (descriptor.kind == StructureKind.LIST) data else null) as List<Any?>?,
             descriptor.kind as StructureKind,
@@ -269,13 +279,13 @@ class FirebaseDecoder(
     override fun decodeChar(): Char {
         val s: String = decodeString()
         if (s.length > 1) error("Decoded invalid char, instead was a string with multiple characters")
-        return s.getOrNull(0) ?: '\u0000'
+        return s[0]
     }
 
     override fun decodeEnum(enumDescriptor: SerialDescriptor): Int =
-        (decodeValue() as? Long)?.toInt() ?: 0
+        (decodeValue() as Long).toInt()
 
-    override fun decodeFloat(): Float = (decodeValue() as? Double)?.toFloat() ?: 0f
+    override fun decodeFloat(): Float = (decodeValue() as Double).toFloat()
 
     override fun decodeInt(): Int = decodeLong().toInt()
 
@@ -312,10 +322,12 @@ class FirebaseDecoder(
                 "String field \"${this.descriptor.getElementName(index - 1)}\" " +
                         "could not be decoded"
             )
-        } else (decodeValue() as? String) ?: ""
+        } else if (descriptor?.getElementName(index) == DocId) {
+            index++; id
+        } else decodeValue() as String
     }
 
-    override fun decodeLong(): Long = (decodeValue() as? Long) ?: 0L
+    override fun decodeLong(): Long = decodeValue() as Long
 
     override fun decodeNotNullMark(): Boolean {
         key = null
