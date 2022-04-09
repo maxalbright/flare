@@ -412,8 +412,8 @@ private class TransactionImpl(
     }
 }
 
-private class ChangesImpl(data: Map<String, Any>) : Changes {
-    val newData: MutableMap<String, Any> = data.toMutableMap()
+private class ChangesImpl(data: Map<String, Any?>) : Changes {
+    val newData: MutableMap<String, Any?> = data.toMutableMap()
 
     fun check(field: String) {
         if (newData[field] is FIRFieldValue) throw FirestoreException(
