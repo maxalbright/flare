@@ -1,4 +1,5 @@
 import enchant.flare.*
+import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
@@ -73,19 +74,19 @@ val ethan = Person(
     favoriteColor = Color.Red,
     friends = listOf(vikram, jeff)
 )
-val vikramMap = mapOf(
+val vikramMap: Map<String, Any?> = mapOf(
     "name" to "Vikram",
     "age" to 19L,
     "height" to mapOf("first" to 5L, "second" to 11L),
     "favoriteColor" to 2L,
 )
-val jeffMap = mapOf(
+val jeffMap: Map<String, Any?> = mapOf(
     "name" to "Jeff",
     "age" to 34L,
     "height" to mapOf("first" to 6L, "second" to 5L),
     "favoriteColor" to 1L,
 )
-val ethanMap = mapOf(
+val ethanMap: Map<String, Any?> = mapOf(
     "name" to "Ethan",
     "age" to 23L,
     "height" to mapOf("first" to 5L, "second" to 10L),
@@ -111,25 +112,26 @@ val myData = MyData(
     double = 4.0,
     map = mapOf("Vikram" to vikram, "Jeff" to jeff),
     nullable = null,
-    string = "Yay"
+    string = "Hello"
 )
 
 @Serializable
 data class MyData(
-    val array: Array<Int>,
-    val blob: ByteArray,
-    val list: Set<Person>,
-    val boolean: Boolean,
-    val date: Instant,
-    val byte: Byte,
-    val short: Short,
-    val int: Int,
-    val long: Long,
-    val float: Float,
-    val double: Double,
-    val map: Map<String, Person>,
-    val nullable: String?,
-    val string: String,
+
+    val array: Array<Int> = arrayOf(),
+    val blob: ByteArray = ByteArray(0),
+    val list: Set<Person> = emptySet(),
+    val boolean: Boolean = false,
+    val date: Instant = Clock.System.now(),
+    val byte: Byte = 0,
+    val short: Short = 0,
+    val int: Int = 0,
+    val long: Long = 0,
+    val float: Float = 0f,
+    val double: Double = 0.0,
+    val map: Map<String, Person>? = null, //Not written if null
+    val nullable: String? = "", //Not written if null
+    val string: String = "",
 )
 
 val myDataMap = mapOf(
@@ -145,5 +147,5 @@ val myDataMap = mapOf(
     "float" to 4.0,
     "double" to 4.0,
     "map" to mapOf("Vikram" to vikramMap, "Jeff" to jeffMap),
-    "string" to "Yay"
+    "string" to "Hello"
 )

@@ -69,7 +69,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
     override suspend fun setDocument(
         path: String,
-        map: Map<String, Any>,
+        map: Map<String, Any?>,
         merge: Merge,
         changes: (Changes.() -> Unit)?
     ): Unit =
@@ -87,7 +87,7 @@ private class FirebaseFirestoreImpl(private val firestore: FIRFirestore) :
 
     override suspend fun updateDocument(
         path: String,
-        map: Map<String, Any>,
+        map: Map<String, Any?>,
         changes: (Changes.() -> Unit)?
     ): Unit =
         suspendCancellableCoroutine { c ->

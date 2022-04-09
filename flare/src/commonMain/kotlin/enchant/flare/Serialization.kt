@@ -64,7 +64,7 @@ suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
 ): T? {
     val output: Any? = call(name, data, timeout, inputStrategy)
     return if (output != null) {
-        val decoder = FirebaseDecoder(output as Map<String, Any>)
+        val decoder = FirebaseDecoder(output as Map<String, Any?>)
         decoder.decodeSerializableValue(outputStrategy)
     } else output
 }
@@ -77,15 +77,15 @@ suspend inline fun <reified E : Any, reified T> FirebaseFunctions.call(
 ): T? {
     val output: Any? = call(name, data, timeout)
     return if (output != null) {
-        val decoder = FirebaseDecoder(output as Map<String, Any>)
+        val decoder = FirebaseDecoder(output as Map<String, Any?>)
         decoder.decodeSerializableValue(outputStrategy)
     } else output
 }
 
 @OptIn(ExperimentalSerializationApi::class)
 class FirebaseEncoder(
-    var list: MutableList<Any>? = null,
-    var map: MutableMap<String, Any>? = null,
+    var list: MutableList<Any?>? = null,
+    var map: MutableMap<String, Any?>? = null,
     val kind: StructureKind = StructureKind.MAP,
     val descriptor: SerialDescriptor? = null
 ) : AbstractEncoder() {
@@ -112,7 +112,7 @@ class FirebaseEncoder(
             return BlobEncoder(map!!, this.descriptor.getElementName(index++), size)
         }
         val output: Any =
-            if (descriptor.kind == StructureKind.LIST) mutableListOf<Any>() else mutableMapOf<String, Any>()
+            if (descriptor.kind == StructureKind.LIST) mutableListOf<Any?>() else mutableMapOf<String, Any?>()
         if (kind == StructureKind.LIST) list!! += output
         else map!![if (key != null) key!!.also { key = null } else this.descriptor.getElementName(
             index
@@ -120,8 +120,8 @@ class FirebaseEncoder(
 
         index++
         return FirebaseEncoder(
-            (if (descriptor.kind == StructureKind.LIST) output else null) as MutableList<Any>?,
-            (if (descriptor.kind != StructureKind.LIST) output else null) as MutableMap<String, Any>?,
+            (if (descriptor.kind == StructureKind.LIST) output else null) as MutableList<Any?>?,
+            (if (descriptor.kind != StructureKind.LIST) output else null) as MutableMap<String, Any?>?,
             descriptor.kind as StructureKind, descriptor
         )
     }
@@ -151,6 +151,7 @@ class FirebaseEncoder(
 
     override fun encodeNull() {
         key = null
+
         index++
     }
 
@@ -171,7 +172,7 @@ internal expect fun isDate(date: Any?): Boolean
 
 @OptIn(ExperimentalSerializationApi::class)
 class BlobEncoder(
-    val map: MutableMap<String, Any>,
+    val map: MutableMap<String, Any?>,
     val name: String,
     size: Int
 ) : AbstractEncoder() {
@@ -190,7 +191,6 @@ class BlobEncoder(
 
 }
 
-//Swap decoder with object accessor
 @OptIn(ExperimentalSerializationApi::class)
 class BlobDecoder(
     blob: Any,
@@ -213,8 +213,8 @@ class BlobDecoder(
 
 @OptIn(ExperimentalSerializationApi::class)
 class FirebaseDecoder(
-    val map: Map<String, Any>? = null,
-    val list: List<Any>? = null,
+    val map: Map<String, Any?>? = null,
+    val list: List<Any?>? = null,
     val kind: StructureKind = StructureKind.MAP,
     val descriptor: SerialDescriptor? = null
 ) : AbstractDecoder() {
@@ -232,56 +232,73 @@ class FirebaseDecoder(
         map?.size ?: list!!.size
 
     override fun beginStructure(descriptor: SerialDescriptor): CompositeDecoder {
-
         if (this.descriptor?.getElementDescriptor(index)?.serialName == "kotlin.ByteArray") {
             return BlobDecoder(map!![this.descriptor.getElementName(index++)]!!)
         }
-        val data: Any =
-            if (kind == StructureKind.LIST) list!![index]
-            else if (this.descriptor == null) map!!
-            else map!![key ?: this.descriptor.getElementName(index)]!!
+        val data: Any? =
+            when {
+                kind == StructureKind.LIST -> list!![index]
+                this.descriptor == null -> map!!
+                else -> map!!.getOrElse(key ?: this.descriptor.getElementName(index)) {
+                    error(
+                        "Flare serialization error: could not find value for structural field " +
+                                "\"${this.descriptor.getElementName(index)}\""
+                    )
+                }
+            }
         index++
+
         return FirebaseDecoder(
-            (if (descriptor.kind != StructureKind.LIST) data else null) as Map<String, Any>?,
-            (if (descriptor.kind == StructureKind.LIST) data else null) as List<Any>?,
+            (if (descriptor.kind != StructureKind.LIST) data else null) as Map<String, Any?>?,
+            (if (descriptor.kind == StructureKind.LIST) data else null) as List<Any?>?,
             descriptor.kind as StructureKind,
             descriptor
         )
     }
 
-    override fun decodeElementIndex(descriptor: SerialDescriptor): Int = when {
-        index >= map?.size ?: list!!.size -> DECODE_DONE
-        map?.containsKey(descriptor.getElementName(index)) == false -> UNKNOWN_NAME
-        else -> index
+    override fun decodeElementIndex(descriptor: SerialDescriptor): Int {
+        return when {
+            index >= map?.size ?: list!!.size -> DECODE_DONE
+            map?.containsKey(descriptor.getElementName(index)) == false -> UNKNOWN_NAME
+            else -> index
+        }
     }
 
-    override fun decodeByte(): Byte =
-        ((map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]) as Long).toByte()
+    override fun decodeByte(): Byte = decodeLong().toByte()
 
     override fun decodeChar(): Char {
-        val s: String =
-            (map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]) as String
+        val s: String = decodeString()
         if (s.length > 1) error("Decoded invalid char, instead was a string with multiple characters")
-        return s[0]
+        return s.getOrNull(0) ?: '\u0000'
     }
 
-    override fun decodeEnum(enumDescriptor: SerialDescriptor): Int = (decodeValue() as Long).toInt()
+    override fun decodeEnum(enumDescriptor: SerialDescriptor): Int =
+        (decodeValue() as? Long)?.toInt() ?: 0
 
-    override fun decodeFloat(): Float = (decodeValue() as Double).toFloat()
+    override fun decodeFloat(): Float = (decodeValue() as? Double)?.toFloat() ?: 0f
 
-    override fun decodeInt(): Int = (decodeValue() as Long).toInt()
+    override fun decodeInt(): Int = decodeLong().toInt()
 
     override fun decodeValue(): Any {
         key = null
-        return map?.get(descriptor!!.getElementName(index++)) ?: list!![index++]
+        return if (map != null)
+            map.getOrElse(descriptor!!.getElementName(index++)) {
+                error(
+                    "Flare serialization error: could not find value for field " +
+                            "\"${descriptor.getElementName(index - 1)}\""
+                )
+            }!!
+        else list!!.getOrElse(index++) {
+            error("Flare serialization error: could not find list value at index ${index - 1}")
+        }!!
     }
 
-    override fun decodeShort(): Short = (decodeValue() as Long).toShort()
+    override fun decodeShort(): Short = decodeLong().toShort()
 
     override fun decodeString(): String {
         return if (descriptor?.getElementDescriptor(index)?.serialName == "Instant")
             fromDate(
-                map?.get(this.descriptor.getElementName(index++)) ?: list!![index++]
+                map?.get(this.descriptor.getElementName(index++)) ?: list!![index++]!!
             ).toString()
         else if (descriptor?.getElementName(index)?.toIntOrNull() != null) {
             for (entry in itr) {
@@ -291,14 +308,19 @@ class FirebaseDecoder(
                 }
             }
             index++
-            key ?: error("Map could not be decoded")
-
-        } else super.decodeString()
+            key ?: error(
+                "String field \"${this.descriptor.getElementName(index - 1)}\" " +
+                        "could not be decoded"
+            )
+        } else (decodeValue() as? String) ?: ""
     }
+
+    override fun decodeLong(): Long = (decodeValue() as? Long) ?: 0L
 
     override fun decodeNotNullMark(): Boolean {
         key = null
-        return map!!.containsKey(descriptor!!.getElementName(index))
+        val name = descriptor!!.getElementName(index)
+        return map!![name] != null
     }
 
     override fun decodeNull(): Nothing? {

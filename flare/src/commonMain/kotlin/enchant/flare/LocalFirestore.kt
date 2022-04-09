@@ -16,7 +16,7 @@ class LocalFirestore : FirebaseFirestore {
     private class DocumentNode(
         val parent: CollectionNode,
         val id: String,
-        val data: MutableMap<String, Any> = mutableMapOf()
+        val data: MutableMap<String, Any?> = mutableMapOf()
     ) {
         val collections: MutableMap<String, CollectionNode> = mutableMapOf()
         val updates: MutableStateFlow<Boolean> = MutableStateFlow(false)
@@ -26,7 +26,7 @@ class LocalFirestore : FirebaseFirestore {
     }
 
     private class DocumentImpl(
-        val data: Map<String, Any>,
+        val data: Map<String, Any?>,
         override val id: String,
         override val metadata: Map<FirestoreMetadata, Any> = mapOf()
     ) : MapDocument(data)
@@ -125,7 +125,7 @@ class LocalFirestore : FirebaseFirestore {
         return node as DocumentNode
     }
 
-    private fun writeToDocument(node: DocumentNode, data: Map<String, Any>) {
+    private fun writeToDocument(node: DocumentNode, data: Map<String, Any?>) {
         data.forEach {
             if (it.value !is LocalFieldValue) node.data[it.key] = it.value
             else when (it.value as LocalFieldValue) {
@@ -174,7 +174,7 @@ class LocalFirestore : FirebaseFirestore {
 
     override suspend fun setDocument(
         path: String,
-        map: Map<String, Any>,
+        map: Map<String, Any?>,
         merge: Merge,
         changes: (Changes.() -> Unit)?
     ) {
@@ -201,7 +201,7 @@ class LocalFirestore : FirebaseFirestore {
 
     override suspend fun updateDocument(
         path: String,
-        map: Map<String, Any>,
+        map: Map<String, Any?>,
         changes: (Changes.() -> Unit)?
     ) {
         val node = getDocumentNode(path, true)!!
@@ -277,9 +277,9 @@ class LocalFirestore : FirebaseFirestore {
     }
 }
 
-private class LocalChangesImpl(data: Map<String, Any>) : Changes {
+private class LocalChangesImpl(data: Map<String, Any?>) : Changes {
 
-    val data: MutableMap<String, Any> = data.toMutableMap()
+    val data: MutableMap<String, Any?> = data.toMutableMap()
 
     fun check(field: String) {
         if (data[field] is LocalFieldValue) throw FirestoreException(

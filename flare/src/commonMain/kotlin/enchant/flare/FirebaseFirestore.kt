@@ -2,9 +2,9 @@ package enchant.flare
 
 import kotlinx.coroutines.flow.Flow
 
-interface Document : Map<String, Any> {
+interface Document : Map<String, Any?> {
     val id: String
-    val metadata: Map<FirestoreMetadata, Any>
+    val metadata: Map<FirestoreMetadata, Any?>
 }
 
 interface Collection : List<Document> {
@@ -21,14 +21,14 @@ interface FirebaseFirestore {
 
     suspend fun setDocument(
         path: String,
-        map: Map<String, Any>,
+        map: Map<String, Any?>,
         merge: Merge = Merge.None,
         changes: (Changes.() -> Unit)? = null
     )
 
     suspend fun updateDocument(
         path: String,
-        map: Map<String, Any>,
+        map: Map<String, Any?>,
         changes: (Changes.() -> Unit)? = null
     )
 
@@ -164,13 +164,13 @@ enum class FirestoreMetadata {
     UpdateTime
 }
 
-abstract class MapDocument(private val data: Map<String, Any>) : Document {
-    override val entries: Set<Map.Entry<String, Any>> = data.entries
+abstract class MapDocument(private val data: Map<String, Any?>) : Document {
+    override val entries: Set<Map.Entry<String, Any?>> = data.entries
     override val keys: Set<String> = data.keys
     override val size: Int = data.size
-    override val values: kotlin.collections.Collection<Any> = data.values
+    override val values: kotlin.collections.Collection<Any?> = data.values
     override fun containsKey(key: String): Boolean = data.containsKey(key)
-    override fun containsValue(value: Any): Boolean = data.containsValue(value)
+    override fun containsValue(value: Any?): Boolean = data.containsValue(value)
     override fun get(key: String): Any? = data[key]
     override fun isEmpty(): Boolean = data.isEmpty()
 }
