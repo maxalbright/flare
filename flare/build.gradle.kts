@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.terathought.enchant"
-version = "1.0.0-alpha10"
+version = "1.0.0-alpha11"
 
 repositories {
     google()
