@@ -130,9 +130,9 @@ class LocalFirestore : FirebaseFirestore {
             if (it.value !is LocalFieldValue) node.data[it.key] = it.value
             else when (it.value as LocalFieldValue) {
                 is IncrementDouble -> node.data[it.key] =
-                    node.data[it.key] ?: 0.0 + (it.value as IncrementDouble).amount
+                    (node.data[it.key] as Double).toDouble() + (it.value as IncrementDouble).amount
                 is IncrementLong -> node.data[it.key] =
-                    node.data[it.key] ?: 0L + (it.value as IncrementDouble).amount
+                    (node.data[it.key] as Long).toLong() + (it.value as IncrementLong).amount
                 ServerTimestamp -> node.data[it.key] = toDate(Clock.System.now())
                 is ArrayRemove -> {
                     val array = node.data[it.key] as? List<*>
@@ -141,8 +141,9 @@ class LocalFirestore : FirebaseFirestore {
                 }
                 is ArrayUnion -> {
                     val array = node.data[it.key] as? List<*>
-                    val set = (it.value as ArrayRemove).elements.toSet()
-                    if (array != null) node.data[it.key] = array.filter { it !in set }
+                    val elements = (it.value as ArrayUnion).elements
+                    node.data[it.key] =
+                        ((array?.toSet() ?: emptySet()).plus(elements = elements)).toList()
                 }
                 Delete -> node.data.remove(it.key)
             }
@@ -290,12 +291,12 @@ private class LocalChangesImpl(data: Map<String, Any?>) : Changes {
 
     override fun arrayRemove(field: String, vararg elements: Any) {
         check(field)
-        data[field] = ArrayRemove(elements)
+        data[field] = ArrayRemove(*elements)
     }
 
     override fun arrayUnion(field: String, vararg elements: Any) {
         check(field)
-        data[field] = ArrayUnion(elements)
+        data[field] = ArrayUnion(*elements)
     }
 
     override fun delete(field: String) {

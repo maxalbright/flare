@@ -5,7 +5,7 @@ import kotlin.random.Random
 import kotlin.test.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class FirestoreTest: FlareTest() {
+class FirestoreTest : FlareTest() {
 
     val firestore by lazy {
         if (useLocal) LocalFirestore() else FirebaseFirestore.instance
@@ -121,6 +121,31 @@ class FirestoreTest: FlareTest() {
             firestore.deleteDocument("test/${testId}/blankk/hi")
         } catch (e: Exception) {
         }
+    }
+
+    @Test
+    fun changes() = runTest {
+        val firestore = LocalFirestore()
+        firestore.setDocument(
+            "collection/document", mapOf(
+                "double" to 1.0,
+                "long" to 2L,
+                "arrayUnion" to listOf(1, 2),
+                "arrayRemove" to listOf(3, 4)
+            )
+        )
+        firestore.updateDocument("collection/document", mapOf()) {
+            increment("double", 2.5)
+            increment("long", 3L)
+            arrayUnion("arrayUnion", 3)
+            arrayRemove("arrayRemove", 4)
+        }
+        val document = firestore.getDocumentOnce("collection/document")
+
+        assertEquals(3.5, document["double"])
+        assertEquals(5L, document["long"])
+        assertEquals(listOf(1,2,3), document["arrayUnion"] as List<Int>)
+        assertContentEquals(listOf(3), document["arrayRemove"] as List<Int>)
     }
 
     @Serializable
