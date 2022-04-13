@@ -32,7 +32,7 @@ class LocalStorage : FirebaseStorage {
                 folder.nodes -= s
                 return@deleteFile
             } else {
-                folder = db.nodes[s] as? Node.FolderNode ?: throw
+                folder = folder.nodes[s] as? Node.FolderNode ?: throw
                 StorageException(ObjectNotFound, "Could not find file at path: $path")
             }
         }
@@ -51,7 +51,7 @@ class LocalStorage : FirebaseStorage {
                 return@getFileNode folder.nodes[s] as? Node.FileNode ?: throw
                 StorageException(ObjectNotFound, "Could not find file at path: $path")
             } else {
-                folder = db.nodes[s] as? Node.FolderNode ?: throw
+                folder = folder.nodes[s] as? Node.FolderNode ?: throw
                 StorageException(ObjectNotFound, "Could not find file at path: $path")
             }
         }

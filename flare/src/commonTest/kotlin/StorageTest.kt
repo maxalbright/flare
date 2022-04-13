@@ -23,22 +23,22 @@ class StorageTest : FlareTest() {
                 updates++
             }
         storage.putBytes(
-            "$testId/myFile.txt", sampleBytes, onProgress = if (useLocal) onProgress else null
+            "$testId/folder/folder/myFile.txt", sampleBytes, onProgress = if (useLocal) onProgress else null
         )
         if (useLocal) assertEquals(
             sampleBytes.size + 1, updates, "Ensure correct amount of updates happened"
         )
 
-        val bytes = storage.getBytes("$testId/myFile.txt", 1000)
+        val bytes = storage.getBytes("$testId/folder/folder/myFile.txt", 1000)
         assertContentEquals(sampleBytes, bytes)
     }
 
     @Test
     fun deleteFile() = runTest {
-        storage.putBytes("$testId/myDeleteFile", sampleBytes)
-        storage.deleteFile("$testId/myDeleteFile")
+        storage.putBytes("$testId/folder/folder/myDeleteFile", sampleBytes)
+        storage.deleteFile("$testId/folder/folder/myDeleteFile")
         assertFails {
-            storage.getBytes("$testId/myDeleteFile", 10)
+            storage.getBytes("$testId/folder/folder/myDeleteFile", 10)
         }
     }
 }
